@@ -1,0 +1,17 @@
+{
+  "register": "Register",
+  "sign_in": "Sign In",
+  "sign_up": "Sign Up",
+  "user_registration": "User Registration",
+  "email": "Email",
+  "password": "Password",
+  "name": "Name",
+  "level": "User Level",
+  "forgot_password": "→ Forget Your Password? ←",
+  "welcome_back": "Welcome Back!",
+  "sign_in_info": "Enter your email and password to sign in",
+  "hello_user": "Hello, User!",
+  "register_info": "Register with your username and password",
+  "level_info": "Enter your user level (1,2,3,4):\n            1. Information - Research Agencies/Universities\n            2. Policy - US Government, Mexican Government, NGOs\n            3. Operational - Suppliers/Distributors\n            4. User - Individual Users, Large Institutional Users",
+  "level_description": "Description of what you do"
+}

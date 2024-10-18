@@ -1,0 +1,17 @@
+{
+  "register": "Registrarse",
+  "sign_in": "Iniciar Sesión",
+  "sign_up": "Registrarse",
+  "user_registration": "Registro de Usuario",
+  "email": "Correo Electrónico",
+  "password": "Contraseña",
+  "name": "Nombre",
+  "level": "Nivel de Usuario",
+  "forgot_password": "→ ¿Olvidaste tu Contraseña? ←",
+  "welcome_back": "¡Bienvenido de Nuevo!",
+  "sign_in_info": "Ingresa tu nombre de correo electrónico y contraseña para iniciar sesión",
+  "hello_user": "¡Hola, Usuario!",
+  "register_info": "Regístrate con tu nombre de usuario y contraseña",
+  "level_info": "Ingresa tu nivel de usuario (1,2,3,4):\n            1. Información - Agencias de Investigación/Universidades\n            2. Política - Gobierno de EE.UU., Gobierno de México, ONGs\n            3. Operacional - Proveedores/Distribuidores\n            4. Usuario - Usuarios Individuales, Grandes Usuarios Institucionales",
+  "level_description": "Descripción de lo que haces"
+}
