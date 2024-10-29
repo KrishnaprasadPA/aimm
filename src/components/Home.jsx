@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import * as joint from "jointjs";
 import styled from "styled-components";
 import {
   Box,
@@ -189,10 +190,36 @@ const Home = () => {
   const [filteredFactors, setFilteredFactors] = useState([]);
 
   const graphRef = useRef(null);
+  const paperRef = useRef(null);
 
   useEffect(() => {
     loadFactors();
     loadModels();
+    const graph = new joint.dia.Graph();
+
+    const paper = new joint.dia.Paper({
+      el: graphRef.current,
+      model: graph,
+      width: "100%",
+      height: "100%",
+      gridSize: 10,
+      drawGrid: true,
+      interactive: { linkMove: true },
+    });
+
+    // Enable element deletion on right-click
+    paper.on("element:contextmenu", (elementView, evt) => {
+      evt.preventDefault();
+      elementView.model.remove();
+    });
+
+    // Enable link deletion on right-click
+    paper.on("link:contextmenu", (linkView, evt) => {
+      evt.preventDefault();
+      linkView.model.remove();
+    });
+
+    graphRef.current.graph = graph;
   }, []);
 
   const loadFactors = async () => {
@@ -275,6 +302,103 @@ const Home = () => {
       console.error("Error retraining model:", error);
     }
   };
+
+  const addRectangleToGraph = (factorName) => {
+    if (graphRef.current && graphRef.current.graph) {
+      const rect = new joint.shapes.standard.Rectangle();
+      rect.position(50, 50); // Adjust position as needed
+      rect.resize(120, 40);
+      rect.attr({
+        body: {
+          fill: "#8e7fa2", // Purple color
+          borderRadius: "3px",
+          stroke: "#8e7fa2",
+        },
+        label: {
+          text: factorName,
+          fill: "white",
+          fontSize: 10, // Smaller font size
+        },
+        borderRadius: "4px",
+      });
+      rect.addTo(graphRef.current.graph);
+    }
+  };
+  // const addRectangleToGraph = (factorName) => {
+  //   if (graphRef.current && graphRef.current.graph) {
+  //     const rect = new joint.shapes.standard.Rectangle();
+  //     rect.position(50, 50); // Adjust position as needed
+  //     rect.resize(100, 40);
+  //     rect.attr({
+  //       body: {
+  //         fill: "#6a1b9a",
+  //         stroke: "#4a148c",
+  //       },
+  //       label: {
+  //         text: factorName,
+  //         fill: "white",
+  //         fontSize: 10,
+  //       },
+  //       button: {
+  //         fill: "red",
+  //         cursor: "pointer",
+  //         refX: "100%",
+  //         refY: "-10%",
+  //         refWidth: "20px",
+  //         refHeight: "20px",
+  //       },
+  //       buttonText: {
+  //         textAnchor: "middle",
+  //         textVerticalAnchor: "middle",
+  //         cursor: "pointer",
+  //         fill: "white",
+  //         fontSize: 10,
+  //       },
+  //     });
+
+  //     // Add ports for linking
+  //     rect.addPort({
+  //       id: "out",
+  //       group: "out",
+  //       attrs: { circle: { fill: "#4a148c", magnet: true } },
+  //     });
+
+  //     rect.addPort({
+  //       id: "in",
+  //       group: "in",
+  //       attrs: { circle: { fill: "#4a148c", magnet: true } },
+  //     });
+
+  //     rect.attr("button/display", true);
+  //     rect.attr("buttonText/text", "x");
+
+  //     rect.on("button:pointerdown", () => rect.remove());
+
+  //     rect.addTo(graphRef.current.graph);
+  //   }
+  // };
+
+  // const addLinkTools = (link) => {
+  //   if (link && paperRef.current) {
+  //     const targetAnchorTool = new joint.linkTools.TargetAnchor();
+  //     const removeTool = new joint.linkTools.Remove();
+
+  //     const toolsView = new joint.dia.ToolsView({
+  //       tools: [targetAnchorTool, removeTool],
+  //     });
+
+  //     const linkView = link.findView(paperRef.current);
+
+  //     if (linkView) {
+  //       linkView.addTools(toolsView);
+  //       linkView.showTools();
+
+  //       setTimeout(() => {
+  //         linkView.hideTools();
+  //       }, 3000); // Hide tools after 3 seconds
+  //     }
+  //   }
+  // };
 
   return (
     <Box sx={{ height: "100%", backgroundColor: "#121212" }}>
@@ -411,6 +535,7 @@ const Home = () => {
                     boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
                   }}
                   key={factor._id}
+                  onClick={() => addRectangleToGraph(factor.name)}
                 >
                   {factor.name}
                 </Box>
@@ -449,6 +574,7 @@ const Home = () => {
                     boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
                   }}
                   key={factor._id}
+                  onClick={() => addRectangleToGraph(factor.name)}
                 >
                   {factor.name}
                 </Box>
@@ -514,6 +640,7 @@ const Home = () => {
           </Box>
 
           <Box
+            ref={graphRef}
             sx={{
               display: "flex",
               justifyContent: "space-between",
