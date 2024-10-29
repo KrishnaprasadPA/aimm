@@ -295,7 +295,7 @@ const Home = () => {
               alt="AIMM"
               style={{ height: "40px", marginRight: "10px" }}
             />
-            AIMM
+            AI Mental Modeler
           </IconButton>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             {" "}
@@ -330,7 +330,7 @@ const Home = () => {
               borderRadius: "3px",
               boxShadow: "-4px 0px 10px rgba(0, 0, 0, 0.2)", // Darker shadow
               paddingTop: "6px",
-              backgroundColor: "#3f3f3f",
+              // backgroundColor: "#3f3f3f",
             }}
           >
             <SearchBar>
@@ -362,7 +362,7 @@ const Home = () => {
               flexWrap: "wrap",
               marginX: "6px",
               margin: "3px",
-              borderRadius: "3px",
+              borderRadius: "10px",
               boxShadow: "-4px 0px 10px rgba(0, 0, 0, 0.2)", // Darker shadow
               paddingTop: "6px",
               padding: "12px",
@@ -384,7 +384,7 @@ const Home = () => {
               display: "flex",
               flexWrap: "wrap",
               margin: "3px",
-              borderRadius: "3px",
+              borderRadius: "10px",
               boxShadow: "-4px 0px 10px rgba(0, 0, 0, 0.2)", // Darker shadow
               paddingTop: "6px",
               padding: "12px",
@@ -422,7 +422,7 @@ const Home = () => {
               display: "flex",
               flexWrap: "wrap",
               margin: "3px",
-              borderRadius: "3px",
+              borderRadius: "10px",
               boxShadow: "-4px 0px 10px rgba(0, 0, 0, 0.2)", // Darker shadow
               paddingTop: "6px",
               padding: "12px",
@@ -488,7 +488,7 @@ const Home = () => {
               alignContent: "center",
               margin: "3px",
               padding: "8px",
-              borderRadius: "3px",
+              borderRadius: "10px",
               boxShadow: "-4px 0px 10px rgba(0, 0, 0, 0.2)", // Darker shadow
               paddingTop: "6px",
               backgroundColor: "#3f3f3f",
@@ -499,8 +499,11 @@ const Home = () => {
               type="text"
               value={modelName}
               onChange={(e) => setModelName(e.target.value)}
-              placeholder="Enter Model Name"
-              style={{ width: "300px" }}
+              placeholder=" Enter Model Name..."
+              style={{
+                width: "300px",
+                borderRadius: "3px",
+              }}
             />
 
             <Box>
@@ -517,7 +520,7 @@ const Home = () => {
               alignContent: "center",
               margin: "3px",
               padding: "8px",
-              borderRadius: "3px",
+              borderRadius: "5px",
               boxShadow: "-4px 0px 10px rgba(0, 0, 0, 0.2)", // Darker shadow
               paddingTop: "6px",
               backgroundColor: "#3f3f3f",
@@ -534,7 +537,7 @@ const Home = () => {
               alignItems: "center", // Center content vertically
               margin: "3px",
               padding: "8px",
-              borderRadius: "3px",
+              borderRadius: "10px",
               boxShadow: "-4px 0px 10px rgba(0, 0, 0, 0.2)", // Darker shadow
               paddingTop: "6px",
               backgroundColor: "#3f3f3f",
@@ -573,7 +576,9 @@ const Home = () => {
             overflowY: "auto",
           }}
         >
-          <Typography variant="h5">Existing Models</Typography>
+          <Typography variant="h5" sx={{ textAlign: "center" }}>
+            Existing Models
+          </Typography>
 
           {modelLevels.map((level) => (
             <Box
@@ -582,7 +587,7 @@ const Home = () => {
                 marginTop: "24px",
                 marginBottom: "24px",
                 padding: "4px",
-                borderRadius: "3px",
+                borderRadius: "10px",
                 boxShadow: "-4px 0px 10px rgba(0, 0, 0, 0.2)", // Darker shadow
                 paddingTop: "6px",
                 backgroundColor: "#3f3f3f",
@@ -612,7 +617,7 @@ const Home = () => {
                       alignItems: "center",
                       backgroundColor: "1E201E",
                       gap: 2,
-                      border: "solid  0.2px",
+                      // border: "solid  0.2px",
                       borderRadius: "5px",
                     }}
                   >
@@ -651,9 +656,9 @@ const Home = () => {
                           left: "50%",
                           transform: "translate(-50%, -50%)",
                           width: 400,
-                          bgcolor: "",
-                          border: "2px solid #000",
-                          boxShadow: 24,
+                          bgcolor: "white",
+                          // border: "2px solid #000",
+                          // boxShadow: 24,
                           p: 4,
                         }}
                       >
