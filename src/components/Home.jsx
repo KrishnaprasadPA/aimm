@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import AddFactorModal from "./AddFactorModal.js";
+import ModelVisualization from "./ModelVisualization.js";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import * as joint from "jointjs";
 import styled from "styled-components";
@@ -61,7 +62,6 @@ const SearchBar = styled.div`
   button {
     padding: 10px 20px;
     border: none;
-    // background-color: #512da8;
     background-color: #60396e;
     color: #fff;
     border-radius: 5px;
@@ -100,13 +100,14 @@ const FactorGrid = styled.div`
 `;
 
 const FactorItem = styled.div`
-  background-color: #b3e5fc;
-  border: 1px solid #0288d1;
+  background-color: #60396e;
   padding: 5px 10px;
   margin: 5px;
   border-radius: 5px;
   cursor: pointer;
   transition: transform 0.2s;
+  color: white;
+  font-size: 12px;
 
   &:hover {
     transform: scale(1.05);
@@ -183,6 +184,10 @@ const Home = () => {
   const [showVisualization, setShowVisualization] = useState(false);
   const [showAddFactorModal, setShowAddFactorModal] = useState(false);
   const [lastRectPosition, setLastRectPosition] = useState({ x: 50, y: 50 });
+  const [selectedModel, setSelectedModel] = useState(null);
+
+  const [sourceElement, setSourceElement] = React.useState(null);
+  const [sourcePort, setSourcePort] = React.useState(null);
 
   const openAddFactorModal = () => setShowAddFactorModal(true);
   const closeAddFactorModal = () => setShowAddFactorModal(false);
@@ -196,6 +201,73 @@ const Home = () => {
 
   const graphRef = useRef(null);
   const paperRef = useRef(null);
+  const [selectedElements, setSelectedElements] = React.useState([]);
+
+  const portsIn = {
+    position: {
+      name: "left",
+    },
+    attrs: {
+      portBody: {
+        magnet: true,
+        r: 10,
+        fill: "#023047",
+        stroke: "#023047",
+      },
+    },
+    label: {
+      position: {
+        name: "left",
+        args: { y: 6 },
+      },
+      markup: [
+        {
+          tagName: "text",
+          selector: "label",
+          className: "label-text",
+        },
+      ],
+    },
+    markup: [
+      {
+        tagName: "circle",
+        selector: "portBody",
+      },
+    ],
+  };
+
+  const portsOut = {
+    position: {
+      name: "right",
+    },
+    attrs: {
+      portBody: {
+        magnet: true,
+        r: 10,
+        fill: "#E6A502",
+        stroke: "#023047",
+      },
+    },
+    label: {
+      position: {
+        name: "right",
+        args: { y: 6 },
+      },
+      markup: [
+        {
+          tagName: "text",
+          selector: "label",
+          className: "label-text",
+        },
+      ],
+    },
+    markup: [
+      {
+        tagName: "circle",
+        selector: "portBody",
+      },
+    ],
+  };
 
   useEffect(() => {
     loadFactors();
@@ -210,6 +282,28 @@ const Home = () => {
       gridSize: 10,
       drawGrid: true,
       interactive: { linkMove: true },
+      cellViewNamespace: joint.shapes,
+      linkPinning: false, // Prevent link being dropped in blank paper area
+      defaultLink: () =>
+        new joint.shapes.standard.Link({
+          attrs: {
+            wrapper: {
+              cursor: "default",
+            },
+          },
+        }),
+      defaultConnectionPoint: { name: "boundary" },
+      validateConnection: function (
+        cellViewS,
+        magnetS,
+        cellViewT,
+        magnetT,
+        end,
+        linkView
+      ) {
+        // Prevent loop linking
+        return magnetS !== magnetT;
+      },
     });
 
     // Enable element deletion on right-click
@@ -218,12 +312,26 @@ const Home = () => {
       elementView.model.remove();
     });
 
-    // Enable link deletion on right-click
+    // // Enable link deletion on right-click
     paper.on("link:contextmenu", (linkView, evt) => {
       evt.preventDefault();
       linkView.model.remove();
     });
 
+    paper.on("link:mouseenter", (linkView) => {
+      showLinkTools(linkView);
+    });
+
+    paper.on("link:mouseleave", (linkView) => {
+      linkView.removeTools();
+    });
+
+    // graphRef.current.graph.on("change:source change:target", function (link) {
+    //   const sourcePort = link.get("source").port;
+    //   const sourceId = link.get("source").id;
+    //   const targetPort = link.get("target").port;
+    //   const targetId = link.get("target").id;
+    // });
     graphRef.current.graph = graph;
   }, []);
 
@@ -231,6 +339,55 @@ const Home = () => {
     console.log("Factor added to the system.");
     // Update any additional state if needed.
   };
+
+  const handleVisualize = (model) => {
+    if (model) {
+      setSelectedModel(model);
+      setShowVisualization(true);
+    }
+  };
+
+  // const handlePortClick = (element, portView) => {
+  //   if (!sourceElement) {
+  //     // First click: set the source element and port
+  //     setSourceElement(element);
+  //     setSourcePort(portView.model.id);
+  //     element.attr("body/fill", "#ffcc00"); // Highlight source element
+  //   } else {
+  //     // Second click: create a link
+  //     if (sourceElement !== element) {
+  //       const link = new joint.shapes.standard.Link();
+  //       link.source({ id: sourceElement.id, port: sourcePort });
+  //       link.target({ id: element.id, port: portView.model.id });
+  //       link.attr({
+  //         line: {
+  //           stroke: "#000",
+  //           strokeWidth: 2,
+  //         },
+  //         label: {
+  //           position: 0.5,
+  //           text: `Weight: 1`, // Replace with your desired weight
+  //           fill: "#000",
+  //         },
+  //       });
+  //       link.addTo(graphRef.current);
+
+  //       // Reset selection
+  //       resetSelection();
+  //     } else {
+  //       alert("You cannot link the same rectangle.");
+  //       resetSelection();
+  //     }
+  //   }
+  // };
+
+  // const resetSelection = () => {
+  //   if (sourceElement) {
+  //     sourceElement.attr("body/fill", "#8e7fa2"); // Reset color
+  //   }
+  //   setSourceElement(null);
+  //   setSourcePort(null);
+  // };
 
   const loadFactors = async () => {
     try {
@@ -284,11 +441,12 @@ const Home = () => {
     }
     setSearchTerm("");
     setFilteredFactors([]);
+    addRectangleToGraph(factor.name);
   };
 
-  const removeFactor = (factor) => {
-    setSelectedFactors(selectedFactors.filter((f) => f._id !== factor._id));
-  };
+  // const removeFactor = (factor) => {
+  //   setSelectedFactors(selectedFactors.filter((f) => f._id !== factor._id));
+  // };
 
   const { logout } = useAuth();
 
@@ -314,10 +472,36 @@ const Home = () => {
   };
 
   const addRectangleToGraph = (factorName) => {
+    const portsOut = {
+      position: {
+        name: "right",
+      },
+      attrs: {
+        portBody: {
+          magnet: true,
+          r: 4,
+          fill: "black",
+          stroke: "white",
+        },
+      },
+      markup: [
+        {
+          tagName: "circle",
+          selector: "portBody",
+        },
+      ],
+    };
+
     if (graphRef.current && graphRef.current.graph) {
       const newX = lastRectPosition.x + 10;
       const newY = lastRectPosition.y + 10;
-      const rect = new joint.shapes.standard.Rectangle();
+      const rect = new joint.shapes.standard.Rectangle({
+        ports: {
+          groups: {
+            out: portsOut,
+          },
+        },
+      });
       rect.position(newX, newY); // Adjust position as needed
       rect.resize(120, 40);
       rect.attr({
@@ -331,87 +515,80 @@ const Home = () => {
           fill: "white",
           fontSize: 10, // Smaller font size
         },
-        borderRadius: "4px",
       });
-      rect.addTo(graphRef.current.graph);
+
+      rect.addPorts([
+        {
+          group: "out",
+          // attrs: { label: { text: "out" } },
+        },
+      ]);
+      graphRef.current.graph.addCells(rect);
       setLastRectPosition({ x: newX, y: newY });
     }
   };
-  // const addRectangleToGraph = (factorName) => {
-  //   if (graphRef.current && graphRef.current.graph) {
-  //     const rect = new joint.shapes.standard.Rectangle();
-  //     rect.position(50, 50); // Adjust position as needed
-  //     rect.resize(100, 40);
-  //     rect.attr({
-  //       body: {
-  //         fill: "#6a1b9a",
-  //         stroke: "#4a148c",
-  //       },
-  //       label: {
-  //         text: factorName,
-  //         fill: "white",
-  //         fontSize: 10,
-  //       },
-  //       button: {
-  //         fill: "red",
-  //         cursor: "pointer",
-  //         refX: "100%",
-  //         refY: "-10%",
-  //         refWidth: "20px",
-  //         refHeight: "20px",
-  //       },
-  //       buttonText: {
-  //         textAnchor: "middle",
-  //         textVerticalAnchor: "middle",
-  //         cursor: "pointer",
-  //         fill: "white",
-  //         fontSize: 10,
-  //       },
-  //     });
 
-  //     // Add ports for linking
-  //     rect.addPort({
-  //       id: "out",
-  //       group: "out",
-  //       attrs: { circle: { fill: "#4a148c", magnet: true } },
-  //     });
+  function showLinkTools(linkView) {
+    const tools = new joint.dia.ToolsView({
+      tools: [
+        new joint.linkTools.Remove({
+          distance: "50%",
+          markup: [
+            {
+              tagName: "circle",
+              selector: "button",
+              attributes: {
+                r: 7,
+                fill: "#f6f6f6",
+                stroke: "#ff5148",
+                "stroke-width": 2,
+                cursor: "pointer",
+              },
+            },
+            {
+              tagName: "path",
+              selector: "icon",
+              attributes: {
+                d: "M -3 -3 3 3 M -3 3 3 -3",
+                fill: "none",
+                stroke: "#ff5148",
+                "stroke-width": 2,
+                "pointer-events": "none",
+              },
+            },
+          ],
+        }),
+      ],
+    });
+    linkView.addTools(tools);
+  }
 
-  //     rect.addPort({
-  //       id: "in",
-  //       group: "in",
-  //       attrs: { circle: { fill: "#4a148c", magnet: true } },
-  //     });
+  const createLinkBetweenSelected = (weight) => {
+    if (selectedElements.length === 2) {
+      const link = new joint.shapes.standard.Link();
+      link.source(selectedElements[0]);
+      link.target(selectedElements[1]);
+      link.attr({
+        line: {
+          stroke: "#000",
+          strokeWidth: 2,
+        },
+        label: {
+          position: 0.5,
+          text: `Weight: ${weight}`, // You can customize the weight here
+          fill: "#000",
+        },
+      });
+      link.addTo(graphRef.current);
 
-  //     rect.attr("button/display", true);
-  //     rect.attr("buttonText/text", "x");
-
-  //     rect.on("button:pointerdown", () => rect.remove());
-
-  //     rect.addTo(graphRef.current.graph);
-  //   }
-  // };
-
-  // const addLinkTools = (link) => {
-  //   if (link && paperRef.current) {
-  //     const targetAnchorTool = new joint.linkTools.TargetAnchor();
-  //     const removeTool = new joint.linkTools.Remove();
-
-  //     const toolsView = new joint.dia.ToolsView({
-  //       tools: [targetAnchorTool, removeTool],
-  //     });
-
-  //     const linkView = link.findView(paperRef.current);
-
-  //     if (linkView) {
-  //       linkView.addTools(toolsView);
-  //       linkView.showTools();
-
-  //       setTimeout(() => {
-  //         linkView.hideTools();
-  //       }, 3000); // Hide tools after 3 seconds
-  //     }
-  //   }
-  // };
+      // Clear selection after linking
+      setSelectedElements([]);
+      // Reset colors
+      selectedElements.forEach((el) => el.attr("body/fill", "#8e7fa2"));
+    } else {
+      alert("Please select exactly two rectangles to create a link.");
+    }
+  };
 
   return (
     <Box sx={{ height: "100%", backgroundColor: "#121212" }}>
@@ -510,7 +687,10 @@ const Home = () => {
             {targetVariables.map((variable) => (
               <CustomButton
                 key={variable}
-                onClick={() => setSelectedTarget(variable)}
+                onClick={() => {
+                  setSelectedTarget(variable);
+                  addRectangleToGraph(variable);
+                }}
               >
                 {variable}
               </CustomButton>
@@ -780,11 +960,16 @@ const Home = () => {
                       <Typography sx={{ fontSize: "14px" }}>
                         Quality: {model.quality}
                       </Typography>
-                      <CustomButton onClick={() => setShowVisualization(true)}>
+                      <CustomButton onClick={() => handleVisualize(model)}>
                         Visualize
                       </CustomButton>
+                      <ModelVisualization
+                        model={selectedModel}
+                        open={showVisualization}
+                        onClose={() => setShowVisualization(false)}
+                      />
                     </Box>
-                    <Modal
+                    {/* <Modal
                       open={showVisualization}
                       onClose={() => setShowVisualization(false)}
                       aria-labelledby="modal-modal-title"
@@ -819,7 +1004,7 @@ const Home = () => {
                           Visualization of model
                         </Typography>
                       </Box>
-                    </Modal>
+                    </Modal> */}
                   </Box>
                 ))}
               </Box>

@@ -138,5 +138,37 @@ def get_models():
         })
     return jsonify(grouped_models)
 
+@app.route('/api/models', methods=['POST'])
+def create_model():
+    try:
+        # Parse the JSON request data
+        data = request.get_json()
+
+        # Validate required fields
+        required_fields = ["name", "description", "links", "target_factor", "creator"]
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        # Construct the model document
+        model = {
+            "name": data["name"],
+            "description": data["description"],
+            "links": data.get("links", []),  # Default to an empty list if not provided
+            "target_factor": data["target_factor"],
+            "creator": data["creator"],  # Convert creator ID to ObjectId if provided as a string
+            "quality": data.get("quality", None),  # Optional field, default is None
+            "deleted": data.get("deleted", False)  # Optional, defaults to False
+        }
+
+        # Insert the model into the database
+        result = models_collection.insert_one(model)
+        model_id = str(result.inserted_id)
+
+        return jsonify({"message": "Model created successfully", "model_id": model_id}), 201
+
+    except Exception as e:
+        print("Error creating model:", e)
+        return jsonify({"error": "An error occurred while creating the model."}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
