@@ -74,9 +74,10 @@ def get_factors():
 @app.route('/api/factors', methods=['POST'])
 def add_factors():
     data = request.get_json()
+    print(data)
     factorname = data.get('name')
     description = data.get('description')
-    time_series = data.get('timeSeries', [])  # Assuming timeSeries is an array of 25 values
+    time_series = [float(x) for x in data.get('timeSeries', [])]  # Assuming timeSeries is an array of 25 values
 
     if factors_collection.find_one({"name": factorname}):
         return jsonify({"message": "Factor name already exists"}), 400

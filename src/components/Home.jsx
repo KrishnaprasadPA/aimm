@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import AddFactorModal from "./AddFactorModal.js";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import * as joint from "jointjs";
 import styled from "styled-components";
@@ -180,7 +181,11 @@ const Home = () => {
   const [userFactors, setUserFactors] = useState([]);
   const [modelLevels, setModelLevels] = useState([]);
   const [showVisualization, setShowVisualization] = useState(false);
-  const [showAddFactorModel, setShowAddFactorModel] = useState(false);
+  const [showAddFactorModal, setShowAddFactorModal] = useState(false);
+  const [lastRectPosition, setLastRectPosition] = useState({ x: 50, y: 50 });
+
+  const openAddFactorModal = () => setShowAddFactorModal(true);
+  const closeAddFactorModal = () => setShowAddFactorModal(false);
   const [newFactor, setNewFactor] = useState({
     name: "",
     description: "",
@@ -221,6 +226,11 @@ const Home = () => {
 
     graphRef.current.graph = graph;
   }, []);
+
+  const handleAddSuccess = () => {
+    console.log("Factor added to the system.");
+    // Update any additional state if needed.
+  };
 
   const loadFactors = async () => {
     try {
@@ -305,14 +315,16 @@ const Home = () => {
 
   const addRectangleToGraph = (factorName) => {
     if (graphRef.current && graphRef.current.graph) {
+      const newX = lastRectPosition.x + 10;
+      const newY = lastRectPosition.y + 10;
       const rect = new joint.shapes.standard.Rectangle();
-      rect.position(50, 50); // Adjust position as needed
+      rect.position(newX, newY); // Adjust position as needed
       rect.resize(120, 40);
       rect.attr({
         body: {
           fill: "#8e7fa2", // Purple color
           borderRadius: "3px",
-          stroke: "#8e7fa2",
+          stroke: "#121212",
         },
         label: {
           text: factorName,
@@ -322,6 +334,7 @@ const Home = () => {
         borderRadius: "4px",
       });
       rect.addTo(graphRef.current.graph);
+      setLastRectPosition({ x: newX, y: newY });
     }
   };
   // const addRectangleToGraph = (factorName) => {
@@ -588,7 +601,13 @@ const Home = () => {
               alignContent: "center",
             }}
           >
-            <CustomButton>Add Factor</CustomButton>
+            <CustomButton onClick={openAddFactorModal}>Add Factor</CustomButton>
+            {showAddFactorModal && (
+              <AddFactorModal
+                onClose={closeAddFactorModal}
+                onAddSuccess={handleAddSuccess}
+              />
+            )}
           </Box>
         </Grid>
         <Grid
