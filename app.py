@@ -139,7 +139,7 @@ def get_models():
     return jsonify(grouped_models)
 
 @app.route('/api/models', methods=['POST'])
-def create_model():
+def save_model():
     try:
         # Parse the JSON request data
         data = request.get_json()

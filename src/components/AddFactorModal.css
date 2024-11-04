@@ -33,7 +33,7 @@
   border: none;
   font-size: 24px;
   cursor: pointer;
-  color: #888;
+  color: #da2222;
 }
 
 .close-btn:hover {
@@ -118,11 +118,11 @@ textarea {
 }
 
 .btn-secondary {
-  background-color: #6c757d;
+  background-color: #f02f2f;
   color: white;
   margin-left: 10px;
 }
 
 .btn-secondary:hover {
-  background-color: #545b62;
+  background-color: #c20f0f;
 }

@@ -5,6 +5,7 @@ import ModelVisualization from "./ModelVisualization.js";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import * as joint from "jointjs";
 import styled from "styled-components";
+import LinkModal from "./LinkModal.js";
 import {
   Box,
   AppBar,
@@ -140,7 +141,6 @@ const ModelNameInput = styled.input`
 const CustomButton = styled.button`
   padding: 8px 15px;
   border: none;
-  // background-color: #512da8;
   background-color: #60396e;
   color: #fff;
   border-radius: 5px;
@@ -202,6 +202,7 @@ const Home = () => {
   const graphRef = useRef(null);
   const paperRef = useRef(null);
   const [selectedElements, setSelectedElements] = React.useState([]);
+  const linkModal = new LinkModal();
 
   const portsIn = {
     position: {
@@ -290,6 +291,16 @@ const Home = () => {
             wrapper: {
               cursor: "default",
             },
+            line: {
+              stroke: "black", // Red color for the link
+              strokeWidth: 2, // Thickness of 2px
+              // targetMarker: {
+              //   type: "path",
+              //   stroke: "#ff0000", // Red arrow at the end of the link
+              //   fill: "#ff0000", // Fill color for arrow
+              //   d: "M 10 -5 0 0 10 5 Z", // Arrowhead path
+              // },
+            },
           },
         }),
       defaultConnectionPoint: { name: "boundary" },
@@ -346,48 +357,6 @@ const Home = () => {
       setShowVisualization(true);
     }
   };
-
-  // const handlePortClick = (element, portView) => {
-  //   if (!sourceElement) {
-  //     // First click: set the source element and port
-  //     setSourceElement(element);
-  //     setSourcePort(portView.model.id);
-  //     element.attr("body/fill", "#ffcc00"); // Highlight source element
-  //   } else {
-  //     // Second click: create a link
-  //     if (sourceElement !== element) {
-  //       const link = new joint.shapes.standard.Link();
-  //       link.source({ id: sourceElement.id, port: sourcePort });
-  //       link.target({ id: element.id, port: portView.model.id });
-  //       link.attr({
-  //         line: {
-  //           stroke: "#000",
-  //           strokeWidth: 2,
-  //         },
-  //         label: {
-  //           position: 0.5,
-  //           text: `Weight: 1`, // Replace with your desired weight
-  //           fill: "#000",
-  //         },
-  //       });
-  //       link.addTo(graphRef.current);
-
-  //       // Reset selection
-  //       resetSelection();
-  //     } else {
-  //       alert("You cannot link the same rectangle.");
-  //       resetSelection();
-  //     }
-  //   }
-  // };
-
-  // const resetSelection = () => {
-  //   if (sourceElement) {
-  //     sourceElement.attr("body/fill", "#8e7fa2"); // Reset color
-  //   }
-  //   setSourceElement(null);
-  //   setSourcePort(null);
-  // };
 
   const loadFactors = async () => {
     try {
@@ -477,6 +446,7 @@ const Home = () => {
         name: "right",
       },
       attrs: {
+        label: { text: "out" },
         portBody: {
           magnet: true,
           r: 4,
@@ -492,6 +462,13 @@ const Home = () => {
       ],
     };
 
+    let rectColor = "#8e7fa2"; // Default purple color
+
+    // Check if factorName is in targetVariables and change color accordingly
+    if (targetVariables.includes(factorName)) {
+      rectColor = "#80396e"; // Change to a different color, e.g., tomato red (#ff6347)
+    }
+
     if (graphRef.current && graphRef.current.graph) {
       const newX = lastRectPosition.x + 10;
       const newY = lastRectPosition.y + 10;
@@ -506,7 +483,7 @@ const Home = () => {
       rect.resize(120, 40);
       rect.attr({
         body: {
-          fill: "#8e7fa2", // Purple color
+          fill: rectColor, // Purple color
           borderRadius: "3px",
           stroke: "#121212",
         },
@@ -529,37 +506,52 @@ const Home = () => {
   };
 
   function showLinkTools(linkView) {
-    const tools = new joint.dia.ToolsView({
-      tools: [
-        new joint.linkTools.Remove({
-          distance: "50%",
-          markup: [
-            {
-              tagName: "circle",
-              selector: "button",
-              attributes: {
-                r: 7,
-                fill: "#f6f6f6",
-                stroke: "#ff5148",
-                "stroke-width": 2,
-                cursor: "pointer",
-              },
-            },
-            {
-              tagName: "path",
-              selector: "icon",
-              attributes: {
-                d: "M -3 -3 3 3 M -3 3 3 -3",
-                fill: "none",
-                stroke: "#ff5148",
-                "stroke-width": 2,
-                "pointer-events": "none",
-              },
-            },
-          ],
-        }),
+    var infoButton = new joint.linkTools.Button({
+      markup: [
+        {
+          tagName: "circle",
+          selector: "button",
+          attributes: {
+            r: 7,
+            fill: "#001DFF",
+            cursor: "pointer",
+          },
+        },
+        {
+          tagName: "path",
+          selector: "icon",
+          attributes: {
+            d: "M -2 4 2 4 M 0 3 0 0 M -2 -1 1 -1 M -1 -4 1 -4",
+            fill: "none",
+            stroke: "#FFFFFF",
+            "stroke-width": 2,
+            "pointer-events": "none",
+          },
+        },
       ],
+      distance: 60,
+      // offset: 20,
+      action: function (evt) {
+        linkModal.show(linkView.model, (updatedData) => {
+          // Update the link model with the new values
+          linkView.model.set({
+            weight: updatedData.weight,
+            trainable: updatedData.trainable,
+          });
+          console.log("Updated link data:", updatedData);
+        });
+      },
     });
+
+    //const infoButton = new joint.linkTools.InfoButton();
+
+    // const removeButton = new joint.linkTools.Remove();
+    //var sourceAnchorTool = new joint.linkTools.SourceAnchor();
+
+    const tools = new joint.dia.ToolsView({
+      tools: [infoButton],
+    });
+
     linkView.addTools(tools);
   }
 
@@ -726,6 +718,7 @@ const Home = () => {
                     backgroundColor: "#866790",
                     padding: "4px",
                     boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
+                    cursor: "pointer",
                   }}
                   key={factor._id}
                   onClick={() => addRectangleToGraph(factor.name)}
@@ -765,6 +758,7 @@ const Home = () => {
                     backgroundColor: "#866790",
                     padding: "4px",
                     boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
+                    cursor: "pointer",
                   }}
                   key={factor._id}
                   onClick={() => addRectangleToGraph(factor.name)}
