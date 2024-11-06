@@ -127,7 +127,7 @@ const useChart = (ref, components, size) => {
   return chartInstance;
 };
 
-const chartComponent = forwardRef(({ data, groupId }, ref) => {
+const chartComponent = forwardRef(({ data }, ref) => {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
@@ -268,7 +268,7 @@ const chartComponent = forwardRef(({ data, groupId }, ref) => {
         >
           <PopoverArrow />
           {/* <PopoverCloseButton onClick={onClose} /> */}
-          <PopoverHeader>Group {groupId}</PopoverHeader>
+          {/* <PopoverHeader>Group {groupId}</PopoverHeader> */}
           <PopoverBody>
             <canvas ref={ref} width={size.width} height={size.height} />
           </PopoverBody>

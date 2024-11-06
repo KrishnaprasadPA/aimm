@@ -240,7 +240,7 @@ const Login = () => {
         loginObj
       );
       if (response.data.message === "Login successful") {
-        //           localStorage.setItem('loggedUser', JSON.stringify(response.data));
+        localStorage.setItem("loggedUser", JSON.stringify(response.data));
         login(response.data); // Set isLoggedIn to true
         navigate("/home");
       }

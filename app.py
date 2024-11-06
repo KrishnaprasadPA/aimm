@@ -14,6 +14,7 @@ db = client["aimm"]
 users_collection = db["users"]
 factors_collection = db["factors"]
 models_collection = db["models"]
+target_collection = db["target"]
 
 @app.after_request
 def add_cors_headers(response):
@@ -59,11 +60,17 @@ def login():
     if user and check_password_hash(user["password"], password):
         return jsonify({
             "message": "Login successful",
+            "id": str(user["_id"]),
             "username": user["username"],
             "level": user["level"]
         }), 200
 
     return jsonify({"message": "Invalid credentials"}), 401
+
+@app.route('/api/target', methods=['GET'])
+def get_targets():
+    targets = list(target_collection.find({}, {"_id": 0}))
+    return jsonify(targets)
 
 @app.route('/api/factors', methods=['GET'])
 def get_factors():
@@ -74,7 +81,6 @@ def get_factors():
 @app.route('/api/factors', methods=['POST'])
 def add_factors():
     data = request.get_json()
-    print(data)
     factorname = data.get('name')
     description = data.get('description')
     time_series = [float(x) for x in data.get('timeSeries', [])]  # Assuming timeSeries is an array of 25 values
@@ -120,7 +126,7 @@ def add_factors():
 
 @app.route('/api/models', methods=['GET'])
 def get_models():
-    models = list(models_collection.find({}))
+    models = list(models_collection.find({"deleted": False}))
     users = list(users_collection.find({}, {"_id": 1, "level": 1}))
     user_levels = {str(user['_id']): user['level'] for user in users}
 
@@ -133,9 +139,12 @@ def get_models():
             grouped_models[user_level] = []
         grouped_models[user_level].append({
             "name": model["name"],
-            "quality": model.get("quality", "Not available"),
-            "links": model.get("links", [])
+            "quality": model.get("quality", "Not trained"),
+            "links": model.get("links", []),
+            "target_factor": model.get("target_factor"),
+            "graph_data": model.get("graph_data", [])
         })
+    print(jsonify(grouped_models))
     return jsonify(grouped_models)
 
 @app.route('/api/models', methods=['POST'])
@@ -143,6 +152,7 @@ def save_model():
     try:
         # Parse the JSON request data
         data = request.get_json()
+        print("Data inside save models is : ",data)
 
         # Validate required fields
         required_fields = ["name", "description", "links", "target_factor", "creator"]
@@ -157,8 +167,10 @@ def save_model():
             "target_factor": data["target_factor"],
             "creator": data["creator"],  # Convert creator ID to ObjectId if provided as a string
             "quality": data.get("quality", None),  # Optional field, default is None
+            "graph_data": data.get("graphData"),
             "deleted": data.get("deleted", False)  # Optional, defaults to False
         }
+        print(model)
 
         # Insert the model into the database
         result = models_collection.insert_one(model)

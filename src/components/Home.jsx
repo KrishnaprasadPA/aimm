@@ -6,6 +6,11 @@ import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import * as joint from "jointjs";
 import styled from "styled-components";
 import LinkModal from "./LinkModal.js";
+import Chart from "chart.js/auto";
+import "chartjs-plugin-dragdata";
+import ChartDataLabels from "chartjs-plugin-dragdata";
+import PopoverChart from "./PopoverChart.js";
+import ChartComponent from "./ChartComponent";
 import {
   Box,
   AppBar,
@@ -169,15 +174,8 @@ const Home = () => {
   const [modelName, setModelName] = useState("");
   const [modelQuality, setModelQuality] = useState("Not trained yet");
   const [selectedFactors, setSelectedFactors] = useState([]);
-  const [targetVariables] = useState([
-    "Pecan",
-    "Urban",
-    "Cotton",
-    "Water Quality",
-    "Water Availability",
-  ]);
   const [selectedTarget, setSelectedTarget] = useState("");
-
+  const [targetVariables, setTargetVariables] = useState([]);
   const [adminFactors, setAdminFactors] = useState([]);
   const [userFactors, setUserFactors] = useState([]);
   const [modelLevels, setModelLevels] = useState([]);
@@ -185,6 +183,8 @@ const Home = () => {
   const [showAddFactorModal, setShowAddFactorModal] = useState(false);
   const [lastRectPosition, setLastRectPosition] = useState({ x: 50, y: 50 });
   const [selectedModel, setSelectedModel] = useState(null);
+  const [openPopovers, setOpenPopovers] = useState([]);
+  const [selectedData, setSelectedData] = useState(null);
 
   const [sourceElement, setSourceElement] = React.useState(null);
   const [sourcePort, setSourcePort] = React.useState(null);
@@ -203,74 +203,11 @@ const Home = () => {
   const paperRef = useRef(null);
   const [selectedElements, setSelectedElements] = React.useState([]);
   const linkModal = new LinkModal();
-
-  const portsIn = {
-    position: {
-      name: "left",
-    },
-    attrs: {
-      portBody: {
-        magnet: true,
-        r: 10,
-        fill: "#023047",
-        stroke: "#023047",
-      },
-    },
-    label: {
-      position: {
-        name: "left",
-        args: { y: 6 },
-      },
-      markup: [
-        {
-          tagName: "text",
-          selector: "label",
-          className: "label-text",
-        },
-      ],
-    },
-    markup: [
-      {
-        tagName: "circle",
-        selector: "portBody",
-      },
-    ],
-  };
-
-  const portsOut = {
-    position: {
-      name: "right",
-    },
-    attrs: {
-      portBody: {
-        magnet: true,
-        r: 10,
-        fill: "#E6A502",
-        stroke: "#023047",
-      },
-    },
-    label: {
-      position: {
-        name: "right",
-        args: { y: 6 },
-      },
-      markup: [
-        {
-          tagName: "text",
-          selector: "label",
-          className: "label-text",
-        },
-      ],
-    },
-    markup: [
-      {
-        tagName: "circle",
-        selector: "portBody",
-      },
-    ],
-  };
+  const [selectedFactorData, setSelectedFactorData] = useState(null);
+  const [isChartVisible, setIsChartVisible] = useState(false);
 
   useEffect(() => {
+    loadTargets();
     loadFactors();
     loadModels();
     const graph = new joint.dia.Graph();
@@ -284,7 +221,7 @@ const Home = () => {
       drawGrid: true,
       interactive: { linkMove: true },
       cellViewNamespace: joint.shapes,
-      linkPinning: false, // Prevent link being dropped in blank paper area
+      linkPinning: false,
       defaultLink: () =>
         new joint.shapes.standard.Link({
           attrs: {
@@ -292,16 +229,31 @@ const Home = () => {
               cursor: "default",
             },
             line: {
-              stroke: "black", // Red color for the link
-              strokeWidth: 2, // Thickness of 2px
-              // targetMarker: {
-              //   type: "path",
-              //   stroke: "#ff0000", // Red arrow at the end of the link
-              //   fill: "#ff0000", // Fill color for arrow
-              //   d: "M 10 -5 0 0 10 5 Z", // Arrowhead path
-              // },
+              stroke: "black",
+              strokeWidth: 2,
             },
           },
+          markup: [
+            {
+              tagName: "path",
+              selector: "wrapper",
+              attributes: {
+                fill: "none",
+                cursor: "pointer",
+                stroke: "transparent",
+                strokeWidth: 10,
+              },
+            },
+            {
+              tagName: "path",
+              selector: "line",
+              attributes: {
+                fill: "none",
+                stroke: "black",
+                strokeWidth: 2,
+              },
+            },
+          ],
         }),
       defaultConnectionPoint: { name: "boundary" },
       validateConnection: function (
@@ -312,7 +264,6 @@ const Home = () => {
         end,
         linkView
       ) {
-        // Prevent loop linking
         return magnetS !== magnetT;
       },
     });
@@ -337,14 +288,48 @@ const Home = () => {
       linkView.removeTools();
     });
 
-    // graphRef.current.graph.on("change:source change:target", function (link) {
-    //   const sourcePort = link.get("source").port;
-    //   const sourceId = link.get("source").id;
-    //   const targetPort = link.get("target").port;
-    //   const targetId = link.get("target").id;
-    // });
+    paper.on("cell:pointerclick", (cellView) => {
+      const element = cellView.model;
+
+      if (element.isElement()) {
+        // const factor = element.attr("label/text"); // Retrieve factor name from label
+        const factor = element.get("factor"); // Assuming time series data is stored in model attributes
+
+        handleOpenPopover(factor);
+      }
+    });
+
     graphRef.current.graph = graph;
   }, []);
+
+  const handleOpenPopover = (componentData) => {
+    const newPopover = {
+      id: componentData.id,
+      componentData: componentData,
+      position: getComponentPosition(componentData), // You can define this function based on your layout
+    };
+    setOpenPopovers((prev) => [...prev, newPopover]); // Add new popover to state
+    setSelectedData(componentData); // Set data for chart
+  };
+
+  // Function to close a specific popover
+  const handleClosePopover = (popoverId) => {
+    setOpenPopovers((prev) => prev.filter((p) => p.id !== popoverId));
+  };
+
+  const getComponentPosition = (component) => {
+    const position = component.position();
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+
+    let xPosition = position.x + 200; // Adjust based on your layout
+    let yPosition = position.y + 100;
+
+    if (xPosition + 400 > screenWidth) xPosition -= 400;
+    if (yPosition + 400 > screenHeight) yPosition -= 400;
+
+    return { x: xPosition, y: yPosition };
+  };
 
   const handleAddSuccess = () => {
     console.log("Factor added to the system.");
@@ -355,6 +340,16 @@ const Home = () => {
     if (model) {
       setSelectedModel(model);
       setShowVisualization(true);
+    }
+  };
+
+  const loadTargets = async () => {
+    try {
+      const response = await axios.get("http://localhost:5001/api/target");
+      setTargetVariables(response.data);
+      console.log();
+    } catch (error) {
+      console.error("Error loading target variables:", error);
     }
   };
 
@@ -392,6 +387,14 @@ const Home = () => {
     }
   };
 
+  // const handleFactorClick = (factor) => {
+  //   // Assuming factor.timeSeries contains the time series data for this factor
+  //   setSelectedFactorData(factor);
+  //   console.log(factor);
+  //   console.log("Inside handleFactorClick");
+  //   setIsChartVisible(true); // Show the chart
+  // };
+
   const onSearchInput = () => {
     if (searchTerm.length > 0) {
       setFilteredFactors(
@@ -410,7 +413,7 @@ const Home = () => {
     }
     setSearchTerm("");
     setFilteredFactors([]);
-    addRectangleToGraph(factor.name);
+    addRectangleToGraph(factor);
   };
 
   // const removeFactor = (factor) => {
@@ -440,7 +443,7 @@ const Home = () => {
     }
   };
 
-  const addRectangleToGraph = (factorName) => {
+  const addRectangleToGraph = (factor) => {
     const portsOut = {
       position: {
         name: "right",
@@ -465,7 +468,7 @@ const Home = () => {
     let rectColor = "#8e7fa2"; // Default purple color
 
     // Check if factorName is in targetVariables and change color accordingly
-    if (targetVariables.includes(factorName)) {
+    if (targetVariables.includes(factor)) {
       rectColor = "#80396e"; // Change to a different color, e.g., tomato red (#ff6347)
     }
 
@@ -478,6 +481,11 @@ const Home = () => {
             out: portsOut,
           },
         },
+        factor: factor,
+        markup: [
+          { tagName: "rect", selector: "body" },
+          { tagName: "text", selector: "label" },
+        ],
       });
       rect.position(newX, newY); // Adjust position as needed
       rect.resize(120, 40);
@@ -488,7 +496,7 @@ const Home = () => {
           stroke: "#121212",
         },
         label: {
-          text: factorName,
+          text: factor.name,
           fill: "white",
           fontSize: 10, // Smaller font size
         },
@@ -500,7 +508,11 @@ const Home = () => {
           // attrs: { label: { text: "out" } },
         },
       ]);
+      console.log("Inside addRectangle");
+      // rect.on("element:pointerclick", () => handleFactorClick(factor));
+      console.log("Called handleFactorClick inside addRectangle");
       graphRef.current.graph.addCells(rect);
+      console.log("Graph is: ", JSON.stringify(graphRef.current.graph));
       setLastRectPosition({ x: newX, y: newY });
     }
   };
@@ -509,31 +521,31 @@ const Home = () => {
     var infoButton = new joint.linkTools.Button({
       markup: [
         {
-          tagName: "circle",
-          selector: "button",
+          tagName: "circle", // Defines the button as a circle
+          selector: "button", // Selector for styling and interaction
           attributes: {
-            r: 7,
-            fill: "#001DFF",
-            cursor: "pointer",
+            r: 7, // Radius of the circle
+            fill: "#001DFF", // Blue fill color for the button
+            cursor: "pointer", // Changes cursor to pointer on hover
           },
         },
         {
-          tagName: "path",
-          selector: "icon",
+          tagName: "path", // Defines an icon inside the circle using SVG path
+          selector: "icon", // Selector for icon styling
           attributes: {
-            d: "M -2 4 2 4 M 0 3 0 0 M -2 -1 1 -1 M -1 -4 1 -4",
-            fill: "none",
-            stroke: "#FFFFFF",
-            "stroke-width": 2,
-            "pointer-events": "none",
+            d: "M -2 4 2 4 M 0 3 0 0 M -2 -1 1 -1 M -1 -4 1 -4", // Path data for an "i" icon (information symbol)
+            fill: "none", // No fill for the path
+            stroke: "#FFFFFF", // White stroke color for the icon
+            "stroke-width": 2, // Stroke width of the icon lines
+            "pointer-events": "none", // Prevents pointer events on the icon itself
           },
         },
       ],
-      distance: 60,
-      // offset: 20,
+      distance: 60, // Distance from the link (adjust as needed)
       action: function (evt) {
+        // Action to perform when the button is clicked
         linkModal.show(linkView.model, (updatedData) => {
-          // Update the link model with the new values
+          // Update the link model with new values from modal input
           linkView.model.set({
             weight: updatedData.weight,
             trainable: updatedData.trainable,
@@ -580,6 +592,71 @@ const Home = () => {
     } else {
       alert("Please select exactly two rectangles to create a link.");
     }
+  };
+
+  const convertGraphToSavableFormat = (graph) => {
+    const allCells = graph.getCells();
+    const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
+
+    // Access the username from the retrieved object
+    const userId = loggedUser ? loggedUser.id : null;
+
+    const coreData = {
+      name: modelName,
+      description: "A brief description of the model",
+      links: [],
+      target_factor: selectedTarget,
+      creator: userId,
+      quality: 0.12,
+      deleted: false,
+      graphData: JSON.stringify(graph),
+    };
+
+    allCells.forEach((cell) => {
+      if (cell.isLink()) {
+        const linkData = {
+          start_factor: cell.getSourceCell().attributes.attrs.label.text,
+          end_factor: cell.getTargetCell().attributes.attrs.label.text,
+          weight: cell.attributes.weight || 1,
+        };
+        coreData.links.push(linkData);
+      }
+    });
+
+    // const graphData = graph.toJSON();
+    return JSON.stringify(coreData);
+  };
+
+  const saveGraphToAPI = async (graph) => {
+    const savableData = convertGraphToSavableFormat(graph);
+
+    try {
+      const response = await fetch("http://localhost:5001/api/models", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: savableData,
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        console.log("Model saved successfully:", result);
+        alert("Model saved successfully!");
+      } else {
+        console.error("Failed to save models:", result.message);
+        alert(result.message || "Failed to save models.");
+      }
+    } catch (error) {
+      console.error("Error saving models:", error);
+      alert("An error occurred while saving models.");
+    }
+    console.log(graph);
+    const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
+    const username = loggedUser ? loggedUser.username : null;
+
+    console.log(username);
   };
 
   return (
@@ -678,13 +755,13 @@ const Home = () => {
           >
             {targetVariables.map((variable) => (
               <CustomButton
-                key={variable}
+                key={variable._id}
                 onClick={() => {
-                  setSelectedTarget(variable);
+                  setSelectedTarget(variable.name);
                   addRectangleToGraph(variable);
                 }}
               >
-                {variable}
+                {variable.name}
               </CustomButton>
             ))}
           </Box>
@@ -721,7 +798,7 @@ const Home = () => {
                     cursor: "pointer",
                   }}
                   key={factor._id}
-                  onClick={() => addRectangleToGraph(factor.name)}
+                  onClick={() => addRectangleToGraph(factor)}
                 >
                   {factor.name}
                 </Box>
@@ -754,14 +831,13 @@ const Home = () => {
                     margin: "2px",
                     borderRadius: "10px",
                     color: "",
-                    // backgroundColor: "#c2a8ff",
                     backgroundColor: "#866790",
                     padding: "4px",
                     boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
                     cursor: "pointer",
                   }}
                   key={factor._id}
-                  onClick={() => addRectangleToGraph(factor.name)}
+                  onClick={() => addRectangleToGraph(factor)}
                 >
                   {factor.name}
                 </Box>
@@ -826,7 +902,13 @@ const Home = () => {
             />
 
             <Box>
-              <CustomButton>Save</CustomButton>
+              <CustomButton
+                onClick={() => {
+                  saveGraphToAPI(graphRef.current.graph);
+                }}
+              >
+                Save
+              </CustomButton>
               <CustomButton>Duplicate</CustomButton>
               <CustomButton>Retrain</CustomButton>
             </Box>
@@ -849,6 +931,16 @@ const Home = () => {
             }}
           >
             {/* Content of the second box goes here */}
+            {openPopovers.map((popover) => (
+              <PopoverChart
+                key={popover.id}
+                componentData={popover.componentData}
+                onClose={() => handleClosePopover(popover.id)}
+              />
+            ))}
+
+            {/* Render ChartComponent */}
+            {selectedFactorData && <ChartComponent data={selectedFactorData} />}
           </Box>
           <Box
             sx={{

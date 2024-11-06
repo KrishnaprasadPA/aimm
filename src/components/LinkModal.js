@@ -32,9 +32,9 @@ class LinkModal {
     this.closeModal.onclick = () => (this.linkModal.style.display = "none");
 
     window.onclick = (event) => {
-      //   if (event.target === this.linkModal) {
-      this.linkModal.style.display = "none";
-      //   }
+      if (event.target === this.linkModal) {
+        this.linkModal.style.display = "none";
+      }
     };
 
     this.updateCallback = null;
@@ -97,8 +97,8 @@ class LinkModal {
           margin: auto;
           padding: 15px;
           border: 1px solid #888;
-          width: 120px;
-          height: 110px;
+          width: 150px;
+          height: 150px;
           border-radius: 8px;
           font-size: 14px;
         }
