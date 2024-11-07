@@ -492,8 +492,9 @@ const Home = () => {
       rect.attr({
         body: {
           fill: rectColor, // Purple color
-          borderRadius: "3px",
+          // borderRadius: "3px",
           stroke: "#121212",
+          strokeWidth: 1,
         },
         label: {
           text: factor.name,
@@ -508,9 +509,7 @@ const Home = () => {
           // attrs: { label: { text: "out" } },
         },
       ]);
-      console.log("Inside addRectangle");
       // rect.on("element:pointerclick", () => handleFactorClick(factor));
-      console.log("Called handleFactorClick inside addRectangle");
       graphRef.current.graph.addCells(rect);
       console.log("Graph is: ", JSON.stringify(graphRef.current.graph));
       setLastRectPosition({ x: newX, y: newY });
@@ -618,6 +617,7 @@ const Home = () => {
           start_factor: cell.getSourceCell().attributes.attrs.label.text,
           end_factor: cell.getTargetCell().attributes.attrs.label.text,
           weight: cell.attributes.weight || 1,
+          trainable: cell.attributes.trainable || true,
         };
         coreData.links.push(linkData);
       }
@@ -781,7 +781,7 @@ const Home = () => {
             <Typography
               sx={{ color: "white", textAlign: "center", width: "100%" }}
             >
-              Admin Factors
+              Factors
             </Typography>
             <Box sx={{ display: "flex", flexGrow: "1", flexWrap: "wrap" }}>
               {adminFactors.map((factor) => (
@@ -821,7 +821,7 @@ const Home = () => {
             <Typography
               sx={{ color: "white", textAlign: "center", width: "100%" }}
             >
-              User Factors
+              Custom Factors
             </Typography>
             <Box sx={{ display: "flex", flexGrow: "1", flexWrap: "wrap" }}>
               {userFactors.map((factor) => (
@@ -909,7 +909,7 @@ const Home = () => {
               >
                 Save
               </CustomButton>
-              <CustomButton>Duplicate</CustomButton>
+              {/* <CustomButton>Duplicate</CustomButton> */}
               <CustomButton>Retrain</CustomButton>
             </Box>
           </Box>
@@ -1016,7 +1016,7 @@ const Home = () => {
                 }}
               >
                 <Typography sx={{ fontSize: "18px" }}>
-                  User Level {level.level}
+                  User Group {level.level}
                 </Typography>
 
                 {level.models.map((model) => (
