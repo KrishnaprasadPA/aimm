@@ -205,12 +205,13 @@ const Home = () => {
   const linkModal = new LinkModal();
   const [selectedFactorData, setSelectedFactorData] = useState(null);
   const [isChartVisible, setIsChartVisible] = useState(false);
+  const [duplicatedGraphData, setDuplicatedGraphData] = useState(null);
 
   useEffect(() => {
     loadTargets();
     loadFactors();
     loadModels();
-    const graph = new joint.dia.Graph();
+    const graph = new joint.dia.Graph({}, { cellNamespace: joint.shapes });
 
     const paper = new joint.dia.Paper({
       el: graphRef.current,
@@ -295,12 +296,21 @@ const Home = () => {
         // const factor = element.attr("label/text"); // Retrieve factor name from label
         const factor = element.get("factor"); // Assuming time series data is stored in model attributes
 
-        handleOpenPopover(factor);
+        handleOpenPopover(element);
       }
     });
+    if (duplicatedGraphData) {
+      try {
+        // Load duplicated graph data into JointJS
+        graph.fromJSON(duplicatedGraphData);
+        console.log("Inside if block");
+      } catch (error) {
+        console.error("Error loading duplicated graph:", error);
+      }
+    }
 
     graphRef.current.graph = graph;
-  }, []);
+  }, [duplicatedGraphData]);
 
   const handleOpenPopover = (componentData) => {
     const newPopover = {
@@ -340,6 +350,19 @@ const Home = () => {
     if (model) {
       setSelectedModel(model);
       setShowVisualization(true);
+    }
+  };
+
+  const handleDuplicateGraph = (graphData) => {
+    setDuplicatedGraphData(graphData);
+    setModelName(selectedModel.name + "-copy");
+  };
+
+  const handleClear = () => {
+    if (graphRef.current && graphRef.current.graph) {
+      // Clear all elements and links from the graph
+      graphRef.current.graph.clear();
+      console.log("Graph cleared");
     }
   };
 
@@ -956,7 +979,12 @@ const Home = () => {
               flexGrow: 1, // Makes this Box fill the remaining space
             }}
           >
-            <Typography>Training Quality:</Typography>
+            <Typography>
+              Training Quality:{" "}
+              {duplicatedGraphData
+                ? selectedModel?.quality || "Not trained yet"
+                : "NA"}
+            </Typography>
 
             <Box
               sx={{
@@ -965,7 +993,7 @@ const Home = () => {
                 alignItems: "center", // Center CustomButton vertically
               }}
             >
-              <DeleteButton>Delete</DeleteButton>
+              <DeleteButton onClick={() => handleClear()}>Clear</DeleteButton>
             </Box>
           </Box>
         </Grid>
@@ -1053,6 +1081,7 @@ const Home = () => {
                         model={selectedModel}
                         open={showVisualization}
                         onClose={() => setShowVisualization(false)}
+                        onDuplicate={handleDuplicateGraph}
                       />
                     </Box>
                     {/* <Modal

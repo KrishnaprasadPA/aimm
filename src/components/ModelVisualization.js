@@ -16,7 +16,7 @@ const CustomButton = styled.button`
   margin-left: 5px;
 `;
 
-const ModelVisualization = ({ model, open, onClose }) => {
+const ModelVisualization = ({ model, open, onClose, onDuplicate }) => {
   const visualizeGraphRef = useRef(null);
   const linkModal = new LinkModal();
 
@@ -156,7 +156,6 @@ const ModelVisualization = ({ model, open, onClose }) => {
 
         window.addEventListener("resize", handleResize);
 
-        // Cleanup function
         return () => {
           paper.remove();
           graph.clear();
@@ -168,6 +167,13 @@ const ModelVisualization = ({ model, open, onClose }) => {
 
   const handleDuplicate = () => {
     console.log("Duplicating");
+    onClose();
+
+    // Pass graph data back to Home (assuming model.graph_data is the current graph data)
+    if (model && model.graph_data) {
+      const parsedGraphData = JSON.parse(model.graph_data);
+      onDuplicate(parsedGraphData);
+    }
   };
 
   function showLinkTools(linkView) {
