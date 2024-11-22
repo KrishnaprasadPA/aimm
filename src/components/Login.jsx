@@ -326,9 +326,22 @@ const Login = () => {
               onChange={handleLoginChange}
               placeholder={t("password")}
             />
-            <a href="#" style={{ color: "#6e3a82", textDecoration: "none" }}>
+            <button
+              type="button"
+              onClick={() => navigate("/forgot-password")}
+              style={{
+                color: "#6e3a82",
+                textDecoration: "none",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
               {t("forgot_password")}
-            </a>
+            </button>
+            {/* <a href="#" style={{ color: "#6e3a82", textDecoration: "none" }}>
+              {t("forgot_password")}
+            </a> */}
             <Button type="submit">{t("sign_in")}</Button>
           </Form>
         </SignInContainer>

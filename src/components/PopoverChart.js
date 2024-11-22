@@ -19,7 +19,6 @@ import {
   Flex,
   Spacer,
   Box,
-  useToastStyles,
 } from "@chakra-ui/react";
 
 import Chart from "chart.js/auto";
@@ -187,7 +186,6 @@ const PopoverChart = forwardRef(
     const [chartDataVersion, setChartDataVersion] = useState(0);
     const [originalData, setOriginalData] = useState([]);
     const [validationErrors, setValidationErrors] = useState({});
-    const toast = useToastStyles();
 
     const handleGroupChange = (e) => {
       onGroupSelect(componentData.componentData.id, e.target.value);
@@ -284,15 +282,8 @@ const PopoverChart = forwardRef(
       setValidationErrors(newValidationErrors);
 
       if (!isValid) {
-        // Optionally use a toast to notify user of validation errors
-        toast({
-          title: "Validation Error",
-          description:
-            "Some entries are invalid. Please fix them before saving.",
-          status: "error",
-          duration: 9000,
-          isClosable: true,
-        });
+        console.log("Not valid");
+
         return;
       }
 
@@ -305,10 +296,7 @@ const PopoverChart = forwardRef(
         {}
       );
       componentData.componentData.set("componentData", updatedComponentData);
-      console.log(
-        "from the save function ",
-        componentData.componentData.get("componentData")
-      );
+      console.log("from the save function ", componentData.factor.name);
       setChartDataVersion((prevVersion) => prevVersion + 1);
       onModalClose();
     };
@@ -393,7 +381,7 @@ const PopoverChart = forwardRef(
             <PopoverArrow />
             <PopoverCloseButton onClick={onClose} />
             <PopoverHeader>
-              {componentData.componentData.get("componentName")}
+              {componentData.factor.name}
               <div
                 style={{
                   display: "flex",

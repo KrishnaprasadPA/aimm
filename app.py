@@ -4,6 +4,12 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
+from bson import ObjectId
+import secrets
+from datetime import datetime, timedelta
+from flask_mail import Mail, Message
+
+
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:4200"}})
@@ -15,6 +21,14 @@ users_collection = db["users"]
 factors_collection = db["factors"]
 models_collection = db["models"]
 target_collection = db["target"]
+
+# Configure Flask-Mail
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'aimm.waterdmd@gmail.com'
+app.config['MAIL_PASSWORD'] = ''
+mail = Mail(app)
 
 @app.after_request
 def add_cors_headers(response):
@@ -66,6 +80,67 @@ def login():
         }), 200
 
     return jsonify({"message": "Invalid credentials"}), 401
+
+@app.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    print("Reached forgot-password")
+    data = request.get_json()
+    email = data.get('email')
+
+    # Check if user exists
+    user = users_collection.find_one({"email": email})
+    if not user:
+        return jsonify({"message": "If the email exists, a reset link has been sent."}), 200
+
+    # Generate secure token
+    token = secrets.token_urlsafe(32)
+    expiry_time = datetime.utcnow() + timedelta(hours=1)
+
+    # Update user record with reset token and expiry
+    users_collection.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"reset_token": token, "reset_token_expiry": expiry_time}}
+    )
+
+    # Send reset link via email
+    reset_link = f"http://localhost:3000/reset-password?token={token}"
+    msg = Message("Password Reset Request",
+                  sender="your_email@gmail.com",
+                  recipients=[email])
+    msg.body = f"Click the link to reset your password: {reset_link}"
+    mail.send(msg)
+
+    return jsonify({"message": "If the email exists, a reset link has been sent."}), 200
+
+
+@app.route('/reset-password', methods=['POST'])
+def reset_password():
+    data = request.get_json()
+    token = data.get('token')
+    new_password = data.get('password')
+
+    # Find user by token and check expiry
+    user = users_collection.find_one({
+        "reset_token": token,
+        "reset_token_expiry": {"$gt": datetime.utcnow()}
+    })
+
+    if not user:
+        return jsonify({"message": "Invalid or expired token."}), 400
+
+    # Hash new password and update user record
+    hashed_password = generate_password_hash(new_password, method='pbkdf2:sha256')
+    users_collection.update_one(
+        {"_id": user["_id"]},
+        {"$set": {
+            "password": hashed_password,
+            "reset_token": None,
+            "reset_token_expiry": None
+        }}
+    )
+
+    return jsonify({"message": "Password reset successfully."}), 200
+
 
 @app.route('/api/target', methods=['GET'])
 def get_targets():
@@ -147,6 +222,27 @@ def get_models():
     print(jsonify(grouped_models))
     return jsonify(grouped_models)
 
+@app.route('/api/models/user', methods=['GET'])
+def get_user_models():
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
+
+    # Find models created by the specified user
+    models = list(models_collection.find({"creator": user_id, "deleted": False}))
+
+    # Prepare models data
+    user_models = [{
+        "id": str(model["_id"]),
+        "name": model["name"],
+        "quality": model.get("quality", "Not trained"),
+        "links": model.get("links", []),
+        "target_factor": model.get("target_factor"),
+        "graph_data": model.get("graph_data", [])
+    } for model in models]
+
+    return jsonify(user_models)
+
 @app.route('/api/models', methods=['POST'])
 def save_model():
     try:
@@ -181,6 +277,24 @@ def save_model():
     except Exception as e:
         print("Error creating model:", e)
         return jsonify({"error": "An error occurred while creating the model."}), 500
+
+@app.route('/api/models/delete/<model_id>', methods=['DELETE'])
+def delete_model(model_id):
+    print(model_id)
+    try:
+        # Update the `deleted` field of the specified model to True
+        result = models_collection.update_one(
+            {"_id": ObjectId(model_id)},  # Match the model by its ObjectId
+            {"$set": {"deleted": True}}  # Set the `deleted` field to True
+        )
+
+        if result.matched_count == 0:
+            return jsonify({"error": "Model not found"}), 404
+
+        return jsonify({"message": "Model deleted successfully"}), 200
+    except Exception as e:
+        print(f"Error deleting model: {e}")
+        return jsonify({"error": "An error occurred"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

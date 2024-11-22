@@ -3,14 +3,18 @@ import axios from "axios";
 import AddFactorModal from "./AddFactorModal.js";
 import ModelVisualization from "./ModelVisualization.js";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import Popper from "@mui/material/Popper";
+import PopupState, { bindToggle, bindPopper } from "material-ui-popup-state";
+import Fade from "@mui/material/Fade";
+import Paper from "@mui/material/Paper";
 import * as joint from "jointjs";
 import styled from "styled-components";
 import LinkModal from "./LinkModal.js";
 import Chart from "chart.js/auto";
 import "chartjs-plugin-dragdata";
 import ChartDataLabels from "chartjs-plugin-dragdata";
-import PopoverChart from "./PopoverChart.js";
-import ChartComponent from "./ChartComponent";
+// import PopoverChart from "./PopoverChart.js";
+import ChartComponent from "./ChartComponent.js";
 import {
   Box,
   AppBar,
@@ -151,6 +155,17 @@ const CustomButton = styled.button`
   border-radius: 5px;
   cursor: pointer;
   margin-left: 5px;
+  &:hover {
+    background-color: #502d5b; /* Slightly darker shade on hover */
+  }
+  &:active {
+    background-color: #40224a; /* Darker shade when clicked */
+    transform: scale(0.98); /* Optional: Adds a click effect */
+  }
+
+  &:focus {
+    outline: none; /* Removes the focus outline if present */
+  }
 `;
 
 const DeleteButton = styled.button`
@@ -162,6 +177,9 @@ const DeleteButton = styled.button`
   border-radius: 5px;
   cursor: pointer;
   margin-left: 5px;
+  &:hover {
+    background-color: #e64545; /* Slightly darker shade on hover */
+  }
 `;
 
 // export const DeleteButton = styled.span`
@@ -191,26 +209,41 @@ const Home = () => {
 
   const openAddFactorModal = () => setShowAddFactorModal(true);
   const closeAddFactorModal = () => setShowAddFactorModal(false);
-  const [newFactor, setNewFactor] = useState({
-    name: "",
-    description: "",
-    timeSeries: new Array(25).fill(null),
-  });
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredFactors, setFilteredFactors] = useState([]);
 
   const graphRef = useRef(null);
   const paperRef = useRef(null);
+  const chartRef = useRef(null);
   const [selectedElements, setSelectedElements] = React.useState([]);
   const linkModal = new LinkModal();
-  const [selectedFactorData, setSelectedFactorData] = useState(null);
-  const [isChartVisible, setIsChartVisible] = useState(false);
   const [duplicatedGraphData, setDuplicatedGraphData] = useState(null);
+  const [selectedFactorData, setSelectedFactorData] = useState(null); // Time series data
+  const [selectedRectangle, setSelectedRectangle] = useState(null); // Selected rectangle
+  const [isChartVisible, setIsChartVisible] = useState(false); // For showing the chart modal
+  const [showModels, setShowModels] = useState(false);
+  const [userModels, setUserModels] = useState([]);
 
   useEffect(() => {
+    const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
+    const userId = loggedUser ? loggedUser.id : null;
+
     loadTargets();
     loadFactors();
     loadModels();
+    loadUserModels(userId);
+
+    if (showModels) {
+      axios
+        .get("http://localhost:5001/api/models/user")
+        .then((response) => {
+          setUserModels(response.data);
+        })
+        .catch((error) => {
+          console.error("Error loading user models:", error);
+        });
+    }
+
     const graph = new joint.dia.Graph({}, { cellNamespace: joint.shapes });
 
     const paper = new joint.dia.Paper({
@@ -293,9 +326,7 @@ const Home = () => {
       const element = cellView.model;
 
       if (element.isElement()) {
-        // const factor = element.attr("label/text"); // Retrieve factor name from label
         const factor = element.get("factor"); // Assuming time series data is stored in model attributes
-
         handleOpenPopover(element);
       }
     });
@@ -310,35 +341,38 @@ const Home = () => {
     }
 
     graphRef.current.graph = graph;
-  }, [duplicatedGraphData]);
-
-  const handleOpenPopover = (componentData) => {
-    const newPopover = {
-      id: componentData.id,
-      componentData: componentData,
-      position: getComponentPosition(componentData), // You can define this function based on your layout
-    };
-    setOpenPopovers((prev) => [...prev, newPopover]); // Add new popover to state
-    setSelectedData(componentData); // Set data for chart
-  };
+  }, [duplicatedGraphData, isChartVisible, showModels]);
 
   // Function to close a specific popover
-  const handleClosePopover = (popoverId) => {
-    setOpenPopovers((prev) => prev.filter((p) => p.id !== popoverId));
-  };
+  // const handleClosePopover = (popoverId) => {
+  //   setOpenPopovers((prev) => prev.filter((p) => p.id !== popoverId));
+  // };
 
-  const getComponentPosition = (component) => {
-    const position = component.position();
-    const screenWidth = window.innerWidth;
-    const screenHeight = window.innerHeight;
+  // const getComponentPosition = (component) => {
+  //   const position = component.attributes.position;
+  //   const screenWidth = window.innerWidth;
+  //   const screenHeight = window.innerHeight;
 
-    let xPosition = position.x + 200; // Adjust based on your layout
-    let yPosition = position.y + 100;
+  //   let xPosition = position.x + 200; // Adjust based on your layout
+  //   let yPosition = position.y + 100;
 
-    if (xPosition + 400 > screenWidth) xPosition -= 400;
-    if (yPosition + 400 > screenHeight) yPosition -= 400;
+  //   if (xPosition + 400 > screenWidth) xPosition -= 400;
+  //   if (yPosition + 400 > screenHeight) yPosition -= 400;
 
-    return { x: xPosition, y: yPosition };
+  //   return { x: xPosition, y: yPosition };
+  // };
+  const handleOpenPopover = (element) => {
+    // Assuming time series data is stored in element.attributes.factor.time_series_data
+    const timeSeriesData = element.attributes.factor.time_series_data;
+
+    setSelectedFactorData(timeSeriesData);
+    console.log("Time series data is: ", timeSeriesData);
+
+    setSelectedRectangle(element);
+    console.log("Selected rectangle is: ", element);
+
+    setIsChartVisible(true);
+    console.log("Chart visible is: ", isChartVisible);
   };
 
   const handleAddSuccess = () => {
@@ -362,6 +396,9 @@ const Home = () => {
     if (graphRef.current && graphRef.current.graph) {
       // Clear all elements and links from the graph
       graphRef.current.graph.clear();
+      setSelectedModel(null);
+      setModelName("");
+
       console.log("Graph cleared");
     }
   };
@@ -410,6 +447,33 @@ const Home = () => {
     }
   };
 
+  const loadUserModels = async (user_id) => {
+    try {
+      const response = await axios.get(
+        `http://localhost:5001/api/models/user?user_id=${user_id}`
+      );
+
+      if (Array.isArray(response.data)) {
+        setUserModels(
+          response.data.map((model) => ({
+            id: model.id,
+            name: model.name,
+            quality: model.quality,
+            links: model.links,
+            target_factor: model.target_factor,
+            graph_data: model.graph_data,
+          }))
+        );
+      } else {
+        console.error("Unexpected API response format:", response.data);
+        setUserModels([]);
+      }
+    } catch (error) {
+      console.error("Error fetching user models:", error);
+      setUserModels([]);
+    }
+  };
+
   // const handleFactorClick = (factor) => {
   //   // Assuming factor.timeSeries contains the time series data for this factor
   //   setSelectedFactorData(factor);
@@ -417,6 +481,20 @@ const Home = () => {
   //   console.log("Inside handleFactorClick");
   //   setIsChartVisible(true); // Show the chart
   // };
+  const handleViewModel = (model) => {
+    setSelectedModel(model);
+    setShowVisualization(true); // Assuming you already have logic for this
+  };
+
+  const handleDeleteModel = async (modelId) => {
+    console.log("This is the modelId: ", modelId);
+    try {
+      await axios.delete(`http://localhost:5001/api/models/delete/${modelId}`);
+      setUserModels(userModels.filter((model) => model.id !== modelId));
+    } catch (error) {
+      console.error("Error deleting model:", error);
+    }
+  };
 
   const onSearchInput = () => {
     if (searchTerm.length > 0) {
@@ -492,7 +570,7 @@ const Home = () => {
 
     // Check if factorName is in targetVariables and change color accordingly
     if (targetVariables.includes(factor)) {
-      rectColor = "#80396e"; // Change to a different color, e.g., tomato red (#ff6347)
+      rectColor = "#80396e";
     }
 
     if (graphRef.current && graphRef.current.graph) {
@@ -529,10 +607,9 @@ const Home = () => {
       rect.addPorts([
         {
           group: "out",
-          // attrs: { label: { text: "out" } },
         },
       ]);
-      // rect.on("element:pointerclick", () => handleFactorClick(factor));
+      // rect.on("element:pointerclick", () => handleOpenPopover(factor));
       graphRef.current.graph.addCells(rect);
       console.log("Graph is: ", JSON.stringify(graphRef.current.graph));
       setLastRectPosition({ x: newX, y: newY });
@@ -706,11 +783,82 @@ const Home = () => {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             {" "}
           </Typography>
+          <PopupState variant="popper" popupId="demo-popup-popper">
+            {(popupState) => (
+              <div>
+                <CustomButton variant="contained" {...bindToggle(popupState)}>
+                  My Models
+                </CustomButton>
+                <Popper {...bindPopper(popupState)} transition>
+                  {({ TransitionProps }) => (
+                    <Fade {...TransitionProps} timeout={350}>
+                      <Paper
+                        sx={{
+                          marginTop: "24px",
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            padding: "10px",
+                            backgroundColor: "#734f7f",
+                            // borderRadius: "8px",
+                            width: "300px",
+                            margin: "auto",
+                          }}
+                        >
+                          {userModels.length === 0 ? (
+                            <Typography sx={{ color: "white" }}>
+                              No models found.
+                            </Typography>
+                          ) : (
+                            userModels.map((model) => (
+                              <Box
+                                key={model.id}
+                                sx={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                  marginTop: "10px",
+                                }}
+                              >
+                                <Typography
+                                  sx={{ color: "white", fontSize: "0.875rem" }}
+                                >
+                                  {model.name}
+                                </Typography>
+                                <Box>
+                                  {/* View Button */}
+                                  <CustomButton
+                                    onClick={() => handleViewModel(model)}
+                                  >
+                                    View
+                                  </CustomButton>
+
+                                  {/* Delete Button */}
+                                  <DeleteButton
+                                    onClick={() => handleDeleteModel(model.id)}
+                                  >
+                                    Delete
+                                  </DeleteButton>
+                                </Box>
+                              </Box>
+                            ))
+                          )}
+                        </Box>
+                      </Paper>
+                    </Fade>
+                  )}
+                </Popper>
+              </div>
+            )}
+          </PopupState>
           <CustomButton color="inherit" onClick={handleLogout}>
             Logout
           </CustomButton>
         </Toolbar>
       </AppBar>
+      {/* Modal for displaying user's models */}
+
       <Grid container sx={{ display: "flex", maxHeight: "92vh" }}>
         <Grid
           item
@@ -954,16 +1102,42 @@ const Home = () => {
             }}
           >
             {/* Content of the second box goes here */}
-            {openPopovers.map((popover) => (
-              <PopoverChart
-                key={popover.id}
-                componentData={popover.componentData}
-                onClose={() => handleClosePopover(popover.id)}
-              />
-            ))}
+            {/* {openPopovers.map((popover) => {
+              // Log each popover object to inspect its structure
+              console.log("Popover object:", popover);
+
+              // Check if componentData exists and log an error if not
+              if (!popover.componentData) {
+                console.error(
+                  "Popover componentData is undefined for popover:",
+                  popover
+                );
+                return null; // Skip rendering this popover if componentData is missing
+              }
+
+              return (
+                <PopoverChart
+                  key={popover.id}
+                  componentData={popover.componentData}
+                  onClose={() => handleClosePopover(popover.id)}
+                />
+              );
+            })} */}
 
             {/* Render ChartComponent */}
-            {selectedFactorData && <ChartComponent data={selectedFactorData} />}
+            {isChartVisible && selectedFactorData && (
+              <Box
+                open={isChartVisible}
+                onClose={() => setIsChartVisible(false)}
+              >
+                <ChartComponent
+                  factorData={selectedFactorData}
+                  selectedRectangle={selectedRectangle}
+                  onClose={() => setIsChartVisible(false)}
+                  ref={chartRef}
+                />
+              </Box>
+            )}
           </Box>
           <Box
             sx={{
@@ -1084,42 +1258,6 @@ const Home = () => {
                         onDuplicate={handleDuplicateGraph}
                       />
                     </Box>
-                    {/* <Modal
-                      open={showVisualization}
-                      onClose={() => setShowVisualization(false)}
-                      aria-labelledby="modal-modal-title"
-                      aria-describedby="modal-modal-description"
-                      BackdropProps={{
-                        sx: {
-                          backgroundColor: "rgba(0, 0, 0, 0.1)",
-                        },
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          position: "absolute",
-                          top: "50%",
-                          left: "50%",
-                          transform: "translate(-50%, -50%)",
-                          width: 400,
-                          bgcolor: "white",
-                          // border: "2px solid #000",
-                          // boxShadow: 24,
-                          p: 4,
-                        }}
-                      >
-                        <Typography
-                          id="modal-modal-title"
-                          variant="h6"
-                          component="h2"
-                        >
-                          Model x
-                        </Typography>
-                        <Typography id="modal-modal-description" sx={{ mt: 2 }}>
-                          Visualization of model
-                        </Typography>
-                      </Box>
-                    </Modal> */}
                   </Box>
                 ))}
               </Box>
