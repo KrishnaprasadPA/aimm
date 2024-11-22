@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import AddFactorModal from "./AddFactorModal.js";
 import ModelVisualization from "./ModelVisualization.js";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import Popper from "@mui/material/Popper";
 import PopupState, { bindToggle, bindPopper } from "material-ui-popup-state";
 import Fade from "@mui/material/Fade";
@@ -214,7 +213,7 @@ const Home = () => {
 
   const graphRef = useRef(null);
   const paperRef = useRef(null);
-  const chartRef = useRef(null);
+  // const chartRef = useRef(null);
   const [selectedElements, setSelectedElements] = React.useState([]);
   const linkModal = new LinkModal();
   const [duplicatedGraphData, setDuplicatedGraphData] = useState(null);
@@ -1094,37 +1093,13 @@ const Home = () => {
               margin: "3px",
               padding: "8px",
               borderRadius: "5px",
-              boxShadow: "-4px 0px 10px rgba(0, 0, 0, 0.2)", // Darker shadow
+              boxShadow: "-4px 0px 10px rgba(0, 0, 0, 0.2)",
               paddingTop: "6px",
               backgroundColor: "#3f3f3f",
-              flexGrow: 1, // Makes this Box fill the remaining space
+              flexGrow: 1,
               height: "80%",
             }}
           >
-            {/* Content of the second box goes here */}
-            {/* {openPopovers.map((popover) => {
-              // Log each popover object to inspect its structure
-              console.log("Popover object:", popover);
-
-              // Check if componentData exists and log an error if not
-              if (!popover.componentData) {
-                console.error(
-                  "Popover componentData is undefined for popover:",
-                  popover
-                );
-                return null; // Skip rendering this popover if componentData is missing
-              }
-
-              return (
-                <PopoverChart
-                  key={popover.id}
-                  componentData={popover.componentData}
-                  onClose={() => handleClosePopover(popover.id)}
-                />
-              );
-            })} */}
-
-            {/* Render ChartComponent */}
             {isChartVisible && selectedFactorData && (
               <Box
                 open={isChartVisible}
@@ -1134,7 +1109,7 @@ const Home = () => {
                   factorData={selectedFactorData}
                   selectedRectangle={selectedRectangle}
                   onClose={() => setIsChartVisible(false)}
-                  ref={chartRef}
+                  // ref={chartRef}
                 />
               </Box>
             )}
