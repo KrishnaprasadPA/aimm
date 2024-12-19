@@ -14,6 +14,8 @@ import "chartjs-plugin-dragdata";
 import ChartDataLabels from "chartjs-plugin-dragdata";
 // import PopoverChart from "./PopoverChart.js";
 import ChartComponent from "./ChartComponent.js";
+import CloseIcon from "@mui/icons-material/Close";
+
 import {
   Box,
   AppBar,
@@ -224,25 +226,6 @@ const Home = () => {
   const [userModels, setUserModels] = useState([]);
 
   useEffect(() => {
-    const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
-    const userId = loggedUser ? loggedUser.id : null;
-
-    loadTargets();
-    loadFactors();
-    loadModels();
-    loadUserModels(userId);
-
-    if (showModels) {
-      axios
-        .get("http://localhost:5001/api/models/user")
-        .then((response) => {
-          setUserModels(response.data);
-        })
-        .catch((error) => {
-          console.error("Error loading user models:", error);
-        });
-    }
-
     const graph = new joint.dia.Graph({}, { cellNamespace: joint.shapes });
 
     const paper = new joint.dia.Paper({
@@ -327,6 +310,7 @@ const Home = () => {
       if (element.isElement()) {
         const factor = element.get("factor"); // Assuming time series data is stored in model attributes
         handleOpenPopover(element);
+        // paper.$el.css("cursor", "pointer");
       }
     });
     if (duplicatedGraphData) {
@@ -340,7 +324,27 @@ const Home = () => {
     }
 
     graphRef.current.graph = graph;
-  }, [duplicatedGraphData, isChartVisible, showModels]);
+  }, [duplicatedGraphData]);
+  const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
+  const userId = loggedUser ? loggedUser.id : null;
+
+  useEffect(() => {
+    loadTargets();
+    loadFactors();
+    loadModels();
+    loadUserModels(userId);
+
+    if (showModels) {
+      axios
+        .get("http://localhost:5001/api/models/user")
+        .then((response) => {
+          setUserModels(response.data);
+        })
+        .catch((error) => {
+          console.error("Error loading user models:", error);
+        });
+    }
+  }, [duplicatedGraphData, showModels, isChartVisible]);
 
   // Function to close a specific popover
   // const handleClosePopover = (popoverId) => {
@@ -389,6 +393,7 @@ const Home = () => {
   const handleDuplicateGraph = (graphData) => {
     setDuplicatedGraphData(graphData);
     setModelName(selectedModel.name + "-copy");
+    setSelectedTarget(selectedModel.target_factor);
   };
 
   const handleClear = () => {
@@ -526,21 +531,79 @@ const Home = () => {
     logout();
   };
 
-  const retrainModel = async () => {
-    const modelData = {
-      name: modelName,
-      factors: selectedFactors,
-      target: selectedTarget,
-    };
+  const extractGraphData = (graph) => {
+    const cells = graph.getCells();
+    const links = [];
+    const factors = {};
+
+    cells.forEach((cell) => {
+      if (cell.isLink()) {
+        // Extract link details
+        links.push({
+          startFactor:
+            cell.getSourceCell()?.attributes?.attrs?.label?.text || "",
+          endFactor: cell.getTargetCell()?.attributes?.attrs?.label?.text || "",
+          weight: cell.attributes.weight || 1, // Default weight is 1
+          trainable: cell.attributes.trainable || false, // Default trainable is false
+        });
+      } else if (cell.isElement()) {
+        // Extract factor details
+        const factorName = cell.attributes.attrs.label.text;
+        factors[factorName] = {
+          data: cell.attributes.factor || {}, // Assuming factor data is stored in attributes.factor
+          position: cell.position(), // Store position for reference
+        };
+      }
+    });
+
+    return { modelName, links, factors, selectedTarget };
+  };
+
+  const retrainModel = async (graphData) => {
     try {
       const response = await axios.post(
         "http://localhost:5001/retrain",
-        modelData
+        graphData
       );
-      setModelQuality(response.data.quality);
+      const updatedWeights = response.data.updated_weights;
+
+      updateGraphWeights(graphRef.current.graph, updatedWeights);
+      alert("Model retrained successfully!");
     } catch (error) {
-      console.error("Error retraining model:", error);
+      console.error("Error during retraining:", error);
+      alert("Failed to retrain the model.");
     }
+  };
+
+  const handleRetrainClick = () => {
+    const graph = graphRef.current.graph; // Assuming `graphRef` holds the JointJS graph instance
+    const graphData = extractGraphData(graph);
+
+    console.log("Extracted Graph Data:", graphData);
+
+    // Send data to backend or process further
+    retrainModel(graphData);
+  };
+
+  const updateGraphWeights = (graph, updatedWeights) => {
+    updatedWeights.forEach((updatedLink) => {
+      const link = graph
+        .getLinks()
+        .find(
+          (l) =>
+            l.getSourceCell()?.attributes?.attrs?.label?.text ===
+              updatedLink.startFactor &&
+            l.getTargetCell()?.attributes?.attrs?.label?.text ===
+              updatedLink.endFactor
+        );
+
+      if (link && link.attributes.trainable) {
+        link.set("weight", updatedLink.new_weight);
+        console.log(
+          `Updated weight for link ${updatedLink.startFactor} -> ${updatedLink.endFactor}`
+        );
+      }
+    });
   };
 
   const addRectangleToGraph = (factor) => {
@@ -698,6 +761,7 @@ const Home = () => {
 
     // Access the username from the retrieved object
     const userId = loggedUser ? loggedUser.id : null;
+    console.log("logged user is: ", loggedUser);
 
     const coreData = {
       name: modelName,
@@ -756,6 +820,23 @@ const Home = () => {
     const username = loggedUser ? loggedUser.username : null;
 
     console.log(username);
+  };
+
+  const handleSaveChanges = (updatedFactorData) => {
+    const updatedRectangle = { ...selectedRectangle };
+    updatedRectangle.attributes.factor.time_series_data = updatedFactorData;
+
+    // Update state with modified rectangle
+    setSelectedRectangle(updatedRectangle);
+
+    // Optionally update selectedFactorData if needed
+    setSelectedFactorData(updatedFactorData);
+
+    console.log("Updated Rectangle:", updatedRectangle);
+    console.log("Updated Factor Data:", updatedFactorData);
+
+    // Close chart after saving changes
+    setIsChartVisible(false);
   };
 
   return (
@@ -1079,8 +1160,7 @@ const Home = () => {
               >
                 Save
               </CustomButton>
-              {/* <CustomButton>Duplicate</CustomButton> */}
-              <CustomButton>Retrain</CustomButton>
+              <CustomButton onClick={handleRetrainClick}>Retrain</CustomButton>
             </Box>
           </Box>
 
@@ -1099,21 +1179,17 @@ const Home = () => {
               flexGrow: 1,
               height: "80%",
             }}
-          >
-            {isChartVisible && selectedFactorData && (
-              <Box
-                open={isChartVisible}
-                onClose={() => setIsChartVisible(false)}
-              >
-                <ChartComponent
-                  factorData={selectedFactorData}
-                  selectedRectangle={selectedRectangle}
-                  onClose={() => setIsChartVisible(false)}
-                  // ref={chartRef}
-                />
-              </Box>
-            )}
-          </Box>
+          ></Box>
+          {isChartVisible && selectedFactorData && (
+            <ChartComponent
+              factorData={selectedFactorData}
+              setSelected={setSelectedFactorData}
+              selectedRectangle={selectedRectangle}
+              onClose={() => setIsChartVisible(false)}
+              onSave={handleSaveChanges}
+              // ref={chartRef}
+            />
+          )}
           <Box
             sx={{
               display: "flex",

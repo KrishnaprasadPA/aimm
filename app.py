@@ -8,6 +8,7 @@ from bson import ObjectId
 import secrets
 from datetime import datetime, timedelta
 from flask_mail import Mail, Message
+from lstm import train_lstm
 
 
 
@@ -252,8 +253,10 @@ def save_model():
 
         # Validate required fields
         required_fields = ["name", "description", "links", "target_factor", "creator"]
-        if not all(field in data for field in required_fields):
-            return jsonify({"error": "Missing required fields"}), 400
+        for field in required_fields:
+            if not (field in data):
+                print("Data is missing: ", field)
+                return jsonify({"error": "Missing required fields"}), 400
 
         # Construct the model document
         model = {
@@ -266,11 +269,14 @@ def save_model():
             "graph_data": data.get("graphData"),
             "deleted": data.get("deleted", False)  # Optional, defaults to False
         }
-        print(model)
+        print("The model is: ",model)
 
         # Insert the model into the database
-        result = models_collection.insert_one(model)
-        model_id = str(result.inserted_id)
+        try:
+            result = models_collection.insert_one(model)
+            model_id = str(result.inserted_id)
+        except Exception as e:
+            print("error: ", e)
 
         return jsonify({"message": "Model created successfully", "model_id": model_id}), 201
 
@@ -295,6 +301,22 @@ def delete_model(model_id):
     except Exception as e:
         print(f"Error deleting model: {e}")
         return jsonify({"error": "An error occurred"}), 500
+
+@app.route('/retrain', methods=['POST'])
+def retrain_model():
+    try:
+        # Get the graph data from the request
+        graph_data = request.get_json()
+
+        # Call the LSTM training function with the received graph data
+        updated_weights = train_lstm(graph_data)
+        print("Updated weights are: ", updated_weights)
+
+        # Return the updated weights to the frontend
+        return jsonify({"updated_weights": updated_weights}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

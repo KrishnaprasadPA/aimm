@@ -40,9 +40,10 @@ class LinkModal {
     this.updateCallback = null;
   }
 
-  // Show modal with specific link data
   show(link, updateCallback) {
-    this.weightInput.value = link.get("weight") || "";
+    // Set default weight to 1 if not provided
+    this.weightInput.value =
+      link.get("weight") !== undefined ? link.get("weight") : 1;
     this.trainableToggle.checked = link.get("trainable") || false;
     this.linkModal.style.display = "block";
 
