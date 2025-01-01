@@ -1,14 +1,17 @@
 import numpy as np
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense
+from tensorflow.keras.layers import LSTM, Dense, Input
 from tensorflow.keras.optimizers import Adam
 
-def train_lstm(graph_data):
+def train_lstm_with_target(graph_data, target_factor_name, lookback_period=10):
     """
-    Train an LSTM model based on graph data and return updated weights.
-    
+    Train an LSTM model considering downstream influence on a target variable
+    with a fixed lookback period (e.g., 10 years).
+
     Parameters:
-    - graph_data (dict): The input data containing factors, links, and target factor.
+    - graph_data (dict): Input data containing factors, links, and time-series data.
+    - target_factor_name (str): The name of the target factor in the Bayesian network.
+    - lookback_period (int): Number of timesteps for the lookback period (e.g., 10 for 10 years of annual data).
 
     Returns:
     - list: A list of updated weights for trainable links.
@@ -21,41 +24,63 @@ def train_lstm(graph_data):
         if not links or not factors:
             raise ValueError("Graph data must include 'links' and 'factors'.")
 
+        # Ensure target factor exists
+        if target_factor_name not in factors:
+            raise ValueError(f"Target factor '{target_factor_name}' not found in factors.")
+
         # Prepare training data
         X_train = []
         y_train = []
+
+        # Extract normalized time-series data for all links
         for link in links:
             start_factor = link['startFactor']
-            end_factor = link['endFactor']
-            weight = link['weight']
 
             # Extract normalized time-series data for the start factor
             time_series = factors[start_factor]['data'].get('time_series_data')
             if not time_series:
                 raise ValueError(f"Missing time series data for factor: {start_factor}")
 
-            # Extract normalized values from time series
-            normalized_values = [entry['normalized_value'] for entry in time_series]
+            # Extract normalized values and apply fixed lookback period
+            normalized_values = [entry['normalized_value'] for entry in time_series[-lookback_period:]]
+            
+            # Pad with zeros if time series is shorter than lookback period
+            if len(normalized_values) < lookback_period:
+                normalized_values = [0] * (lookback_period - len(normalized_values)) + normalized_values
+
             X_train.append(normalized_values)
-            y_train.append(weight)  # Use the link's weight as the target
 
-        # Convert to NumPy arrays
-        X_train = np.array(X_train)
-        y_train = np.array(y_train)
+        # Prepare target variable's time-series data
+        target_time_series = factors[target_factor_name]['data'].get('time_series_data')
+        if not target_time_series:
+            raise ValueError(f"Missing time series data for target factor: {target_factor_name}")
+        
+        y_target = [entry['normalized_value'] for entry in target_time_series[-lookback_period:]]
 
-        # Reshape input for LSTM [samples, timesteps, features]
-        if len(X_train.shape) == 2:  # Add feature dimension if missing
-            X_train = X_train.reshape((X_train.shape[0], X_train.shape[1], 1))
+        # Pad with zeros if target series is shorter than lookback period
+        if len(y_target) < lookback_period:
+            y_target = [0] * (lookback_period - len(y_target)) + y_target
+
+        # Reshape X_train and y_train to ensure matching dimensions
+        X_train = np.array(X_train).T  # Transpose to align inputs with outputs
+        X_train = X_train.reshape((X_train.shape[0], X_train.shape[1], 1))  # Add feature dimension
+
+        y_train = np.array(y_target)
+
+        # Ensure that X_train and y_train have matching first dimensions
+        if X_train.shape[0] != y_train.shape[0]:
+            raise ValueError(f"Mismatch between X_train samples ({X_train.shape[0]}) and y_train samples ({y_train.shape[0]}).")
 
         # Define LSTM model
         model = Sequential([
-            LSTM(50, activation='relu', input_shape=(X_train.shape[1], 1)),
-            Dense(1)  # Single dense layer for weight prediction
+            Input(shape=(lookback_period, 1)),  # Fixed lookback period as input shape
+            LSTM(50, activation='relu'),
+            Dense(1)  # Single dense layer for predicting influence on target variable
         ])
         
         model.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
 
-        # Train the model
+        # Train the model using X_train and y_target as labels
         model.fit(X_train, y_train, epochs=50, batch_size=32, verbose=0)
 
         # Predict new weights based on trained model
@@ -74,13 +99,13 @@ def train_lstm(graph_data):
         return updated_links
 
     except KeyError as e:
-        print(f"KeyError in train_lstm: {e}")
+        print(f"KeyError in train_lstm_with_target: {e}")
         raise
 
     except ValueError as e:
-        print(f"ValueError in train_lstm: {e}")
+        print(f"ValueError in train_lstm_with_target: {e}")
         raise
 
     except Exception as e:
-        print(f"Unexpected error in train_lstm: {e}")
+        print(f"Unexpected error in train_lstm_with_target: {e}")
         raise

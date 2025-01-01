@@ -8,7 +8,7 @@ from bson import ObjectId
 import secrets
 from datetime import datetime, timedelta
 from flask_mail import Mail, Message
-from lstm import train_lstm
+from lstm import train_lstm_with_target
 
 
 
@@ -249,8 +249,6 @@ def save_model():
     try:
         # Parse the JSON request data
         data = request.get_json()
-        print("Data inside save models is : ",data)
-
         # Validate required fields
         required_fields = ["name", "description", "links", "target_factor", "creator"]
         for field in required_fields:
@@ -269,7 +267,6 @@ def save_model():
             "graph_data": data.get("graphData"),
             "deleted": data.get("deleted", False)  # Optional, defaults to False
         }
-        print("The model is: ",model)
 
         # Insert the model into the database
         try:
@@ -309,13 +306,14 @@ def retrain_model():
         graph_data = request.get_json()
 
         # Call the LSTM training function with the received graph data
-        updated_weights = train_lstm(graph_data)
+        updated_weights = train_lstm_with_target(graph_data, graph_data.get('selectedTarget'))
         print("Updated weights are: ", updated_weights)
 
         # Return the updated weights to the frontend
         return jsonify({"updated_weights": updated_weights}), 200
 
     except Exception as e:
+        print("Error ", e)
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':

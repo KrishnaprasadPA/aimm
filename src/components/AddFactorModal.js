@@ -106,6 +106,9 @@ const AddFactorModal = ({ onClose, onAddSuccess }) => {
             </div>
           </div>
           <div className="form-actions">
+            <button type="submit" className="btn-time">
+              Add Year
+            </button>
             <button type="submit" className="btn-primary">
               Add Factor
             </button>
