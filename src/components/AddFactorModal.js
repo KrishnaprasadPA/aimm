@@ -32,7 +32,7 @@ const AddFactorModal = ({ onClose, onAddSuccess }) => {
     e.preventDefault();
 
     try {
-      const response = await fetch("https://localhost:5001/api/factors", {
+      const response = await fetch("http://localhost:5001/api/factors", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -106,7 +106,7 @@ const AddFactorModal = ({ onClose, onAddSuccess }) => {
             </div>
           </div>
           <div className="form-actions">
-            <button type="button" onClick={onAddYear} className="btn-time">
+            <button type="submit" className="btn-time">
               Add Year
             </button>
             <button type="submit" className="btn-primary">

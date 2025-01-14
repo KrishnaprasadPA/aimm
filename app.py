@@ -317,4 +317,6 @@ def retrain_model():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    # app.run(debug=True, port=5001)
+    #  if running in local:
+    app.run(debug=True, ssl_context=('localhost.pem', 'localhost-key.pem'), port=5001)
