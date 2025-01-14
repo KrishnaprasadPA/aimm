@@ -218,7 +218,7 @@ const Login = () => {
     e.preventDefault();
     try {
       const response = await axios.post(
-        "http://localhost:5001/register",
+        "https://localhost:5001/register",
         signUpObj
       );
       alert("Registration Successful");
@@ -236,7 +236,7 @@ const Login = () => {
     e.preventDefault();
     try {
       const response = await axios.post(
-        "http://localhost:5001/login",
+        "https://localhost:5001/login",
         loginObj
       );
       if (response.data.message === "Login successful") {

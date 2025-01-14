@@ -13,7 +13,7 @@ from lstm import train_lstm_with_target
 
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "http://localhost:4200"}})
+CORS(app, resources={r"/*": {"origins": "https://localhost:4200"}})
 
 # Configure MongoDB
 client = MongoClient("mongodb://localhost:27017/")

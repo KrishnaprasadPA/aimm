@@ -68,7 +68,7 @@ const ForgotPassword = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:5001/forgot-password", { email });
+      await axios.post("https://localhost:5001/forgot-password", { email });
       alert("If the email exists, a reset link has been sent.");
       navigate("/login");
     } catch (error) {

@@ -336,7 +336,7 @@ const Home = () => {
 
     if (showModels) {
       axios
-        .get("http://localhost:5001/api/models/user")
+        .get("https://localhost:5001/api/models/user")
         .then((response) => {
           setUserModels(response.data);
         })
@@ -409,7 +409,7 @@ const Home = () => {
 
   const loadTargets = async () => {
     try {
-      const response = await axios.get("http://localhost:5001/api/target");
+      const response = await axios.get("https://localhost:5001/api/target");
       setTargetVariables(response.data);
       console.log();
     } catch (error) {
@@ -419,7 +419,7 @@ const Home = () => {
 
   const loadFactors = async () => {
     try {
-      const response = await axios.get("http://localhost:5001/api/factors");
+      const response = await axios.get("https://localhost:5001/api/factors");
       setAdminFactors(
         response.data.filter((factor) => factor.creator === "admin")
       );
@@ -433,7 +433,7 @@ const Home = () => {
 
   const loadModels = async () => {
     try {
-      const response = await axios.get("http://localhost:5001/api/models");
+      const response = await axios.get("https://localhost:5001/api/models");
       if (response.data && typeof response.data === "object") {
         setModelLevels(
           Object.keys(response.data).map((levelKey) => ({
@@ -454,7 +454,7 @@ const Home = () => {
   const loadUserModels = async (user_id) => {
     try {
       const response = await axios.get(
-        `http://localhost:5001/api/models/user?user_id=${user_id}`
+        `https://localhost:5001/api/models/user?user_id=${user_id}`
       );
 
       if (Array.isArray(response.data)) {
@@ -493,7 +493,7 @@ const Home = () => {
   const handleDeleteModel = async (modelId) => {
     console.log("This is the modelId: ", modelId);
     try {
-      await axios.delete(`http://localhost:5001/api/models/delete/${modelId}`);
+      await axios.delete(`https://localhost:5001/api/models/delete/${modelId}`);
       setUserModels(userModels.filter((model) => model.id !== modelId));
     } catch (error) {
       console.error("Error deleting model:", error);
@@ -562,7 +562,7 @@ const Home = () => {
   const retrainModel = async (graphData) => {
     try {
       const response = await axios.post(
-        "http://localhost:5001/retrain",
+        "https://localhost:5001/retrain",
         graphData
       );
       const updatedWeights = response.data.updated_weights;
@@ -794,7 +794,7 @@ const Home = () => {
     const savableData = convertGraphToSavableFormat(graph);
 
     try {
-      const response = await fetch("http://localhost:5001/api/models", {
+      const response = await fetch("https://localhost:5001/api/models", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

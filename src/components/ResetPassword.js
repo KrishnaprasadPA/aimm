@@ -92,7 +92,7 @@ const ResetPassword = () => {
     }
 
     try {
-      await axios.post("http://localhost/reset-password", { password });
+      await axios.post("https://localhost/reset-password", { password });
       alert("Password reset successfully!");
       navigate("/login");
     } catch (error) {
