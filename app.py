@@ -13,7 +13,7 @@ from lstm import train_lstm_with_target
 
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "http://localhost:4200"}})
+CORS(app, resources={r"/*": {"origins": "https://localhost:4200"}})
 
 # Configure MongoDB
 client = MongoClient("mongodb://localhost:27017/")
@@ -317,4 +317,6 @@ def retrain_model():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    # app.run(debug=True, port=5001)
+    #  if running in local:
+    app.run(debug=True, ssl_context=('localhost.pem', 'localhost-key.pem'), port=5001)
