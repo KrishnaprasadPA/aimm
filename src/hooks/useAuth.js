@@ -3,6 +3,7 @@ import { useState, useEffect, useContext, createContext } from "react";
 import axios from "axios";
 
 const AuthContext = createContext(null);
+const apiUrl = process.env.REACT_APP_API_URI;
 
 export const AuthProvider = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -14,7 +15,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post("https://localhost:5001/login", {
+      const response = await axios.post(`${apiUrl}/login`, {
         email,
         password,
       });
