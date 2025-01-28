@@ -64,11 +64,12 @@ const Button = styled.button`
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
   const navigate = useNavigate();
+  const apiUrl = process.env.REACT_APP_API_URI;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("https://localhost:5001/forgot-password", { email });
+      await axios.post(`${apiUrl}/forgot-password`, { email });
       alert("If the email exists, a reset link has been sent.");
       navigate("/login");
     } catch (error) {

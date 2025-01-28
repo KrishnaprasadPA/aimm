@@ -3,6 +3,8 @@ import React, { useState } from "react";
 import "./AddFactorModal.css";
 import axios from "axios";
 
+const apiUrl = process.env.REACT_APP_API_URI;
+
 const AddFactorModal = ({ onClose, onAddSuccess }) => {
   const [newFactor, setNewFactor] = useState({
     name: "",
@@ -32,7 +34,7 @@ const AddFactorModal = ({ onClose, onAddSuccess }) => {
     e.preventDefault();
 
     try {
-      const response = await fetch("http://localhost:5001/api/factors", {
+      const response = await fetch(`${apiUrl}/api/factors`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

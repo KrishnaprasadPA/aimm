@@ -12,7 +12,6 @@ import LinkModal from "./LinkModal.js";
 import Chart from "chart.js/auto";
 import "chartjs-plugin-dragdata";
 import ChartDataLabels from "chartjs-plugin-dragdata";
-// import PopoverChart from "./PopoverChart.js";
 import ChartComponent from "./ChartComponent.js";
 import CloseIcon from "@mui/icons-material/Close";
 
@@ -183,11 +182,7 @@ const DeleteButton = styled.button`
   }
 `;
 
-// export const DeleteButton = styled.span`
-//   color: #f44336;
-//   margin-left: 5px;
-//   cursor: pointer;
-// `;
+const apiUrl = process.env.REACT_APP_API_URI;
 
 const Home = () => {
   const [modelName, setModelName] = useState("");
@@ -336,7 +331,7 @@ const Home = () => {
 
     if (showModels) {
       axios
-        .get("https://localhost:5001/api/models/user")
+        .get(`${apiUrl}/api/models/user`)
         .then((response) => {
           setUserModels(response.data);
         })
@@ -409,7 +404,7 @@ const Home = () => {
 
   const loadTargets = async () => {
     try {
-      const response = await axios.get("https://localhost:5001/api/target");
+      const response = await axios.get(`${apiUrl}/api/target`);
       setTargetVariables(response.data);
       console.log();
     } catch (error) {
@@ -419,7 +414,7 @@ const Home = () => {
 
   const loadFactors = async () => {
     try {
-      const response = await axios.get("https://localhost:5001/api/factors");
+      const response = await axios.get(`${apiUrl}/api/factors`);
       setAdminFactors(
         response.data.filter((factor) => factor.creator === "admin")
       );
@@ -433,7 +428,7 @@ const Home = () => {
 
   const loadModels = async () => {
     try {
-      const response = await axios.get("https://localhost:5001/api/models");
+      const response = await axios.get(`${apiUrl}/api/models`);
       if (response.data && typeof response.data === "object") {
         setModelLevels(
           Object.keys(response.data).map((levelKey) => ({
@@ -454,7 +449,7 @@ const Home = () => {
   const loadUserModels = async (user_id) => {
     try {
       const response = await axios.get(
-        `https://localhost:5001/api/models/user?user_id=${user_id}`
+        `${apiUrl}/api/models/user?user_id=${user_id}`
       );
 
       if (Array.isArray(response.data)) {
@@ -493,7 +488,7 @@ const Home = () => {
   const handleDeleteModel = async (modelId) => {
     console.log("This is the modelId: ", modelId);
     try {
-      await axios.delete(`https://localhost:5001/api/models/delete/${modelId}`);
+      await axios.delete(`${apiUrl}/api/models/delete/${modelId}`);
       setUserModels(userModels.filter((model) => model.id !== modelId));
     } catch (error) {
       console.error("Error deleting model:", error);
@@ -561,10 +556,7 @@ const Home = () => {
 
   const retrainModel = async (graphData) => {
     try {
-      const response = await axios.post(
-        "https://localhost:5001/retrain",
-        graphData
-      );
+      const response = await axios.post(`${apiUrl}/retrain`, graphData);
       const updatedWeights = response.data.updated_weights;
 
       updateGraphWeights(graphRef.current.graph, updatedWeights);
@@ -794,7 +786,7 @@ const Home = () => {
     const savableData = convertGraphToSavableFormat(graph);
 
     try {
-      const response = await fetch("https://localhost:5001/api/models", {
+      const response = await fetch(`${apiUrl}/api/models`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

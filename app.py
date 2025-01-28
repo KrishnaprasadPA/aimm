@@ -9,7 +9,11 @@ import secrets
 from datetime import datetime, timedelta
 from flask_mail import Mail, Message
 from lstm import train_lstm_with_target
+from dotenv import load_dotenv
+import os
 
+
+load_dotenv()
 
 
 app = Flask(__name__)
@@ -24,12 +28,15 @@ models_collection = db["models"]
 target_collection = db["target"]
 
 # Configure Flask-Mail
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_SERVER'] = 'mail.lunanode.net'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'aimm.waterdmd@gmail.com'
-app.config['MAIL_PASSWORD'] = ''
+app.config['MAIL_USERNAME'] = 'admin@aimm.waterdmd.info'
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 mail = Mail(app)
+
+#Configure API URI
+apiUrl = os.getenv('REACT_APP_FRONTEND_URI')
 
 @app.after_request
 def add_cors_headers(response):
@@ -84,7 +91,6 @@ def login():
 
 @app.route('/forgot-password', methods=['POST'])
 def forgot_password():
-    print("Reached forgot-password")
     data = request.get_json()
     email = data.get('email')
 
@@ -104,12 +110,13 @@ def forgot_password():
     )
 
     # Send reset link via email
-    reset_link = f"http://localhost:3000/reset-password?token={token}"
+    reset_link = f"{apiUrl}/reset-password?token={token}"
     msg = Message("Password Reset Request",
-                  sender="your_email@gmail.com",
+                  sender="admin@aimm.waterdmd.info",
                   recipients=[email])
     msg.body = f"Click the link to reset your password: {reset_link}"
     mail.send(msg)
+    print(reset_link)
 
     return jsonify({"message": "If the email exists, a reset link has been sent."}), 200
 
@@ -120,6 +127,9 @@ def reset_password():
     token = data.get('token')
     new_password = data.get('password')
 
+    print("Token is : ", token)
+    print("Expiry time is: ", datetime.utcnow)
+
     # Find user by token and check expiry
     user = users_collection.find_one({
         "reset_token": token,
@@ -127,6 +137,7 @@ def reset_password():
     })
 
     if not user:
+        print("Not user")
         return jsonify({"message": "Invalid or expired token."}), 400
 
     # Hash new password and update user record
@@ -317,6 +328,8 @@ def retrain_model():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
-    #  if running in local:
-    # app.run(debug=True, ssl_context=('localhost.pem', 'localhost-key.pem'), port=5001)
+    if os.getenv('ENVIRONMENT')== 'LOCAL':
+        app.run(debug=True, ssl_context=('localhost.pem', 'localhost-key.pem'), port=5001)
+    else:
+        app.run(debug=True, port=5001)
+

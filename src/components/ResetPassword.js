@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import axios from "axios";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
-import { FaEye, FaEyeSlash } from "react-icons/fa"; // Import eye icons
+import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { useSearchParams } from "react-router-dom";
 
 // Styled components
 const Parent = styled.div`
@@ -76,10 +77,14 @@ const Button = styled.button`
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const apiUrl = process.env.REACT_APP_API_URI;
 
   // States to toggle visibility
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token");
 
   const navigate = useNavigate();
 
@@ -92,7 +97,10 @@ const ResetPassword = () => {
     }
 
     try {
-      await axios.post("https://localhost/reset-password", { password });
+      await axios.post(`${apiUrl}/reset-password`, {
+        token,
+        password,
+      });
       alert("Password reset successfully!");
       navigate("/login");
     } catch (error) {
