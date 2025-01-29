@@ -17,7 +17,7 @@ load_dotenv()
 
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "https://localhost:4200"}})
+CORS(app)
 
 # Configure MongoDB
 client = MongoClient("mongodb://localhost:27017/")
@@ -45,7 +45,7 @@ def add_cors_headers(response):
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     return response
 
-@app.route('/register', methods=['POST'])
+@app.route('/api/register', methods=['POST'])
 def register():
     data = request.get_json()
     username = data.get('name')
@@ -72,7 +72,7 @@ def register():
 
     return jsonify({"message": "User registered successfully"}), 201
 
-@app.route('/login', methods=['POST'])
+@app.route('/api/login', methods=['POST'])
 def login():
     data = request.get_json()
     email = data.get('email')
@@ -89,7 +89,7 @@ def login():
 
     return jsonify({"message": "Invalid credentials"}), 401
 
-@app.route('/forgot-password', methods=['POST'])
+@app.route('/api/forgot-password', methods=['POST'])
 def forgot_password():
     data = request.get_json()
     email = data.get('email')
@@ -121,7 +121,7 @@ def forgot_password():
     return jsonify({"message": "If the email exists, a reset link has been sent."}), 200
 
 
-@app.route('/reset-password', methods=['POST'])
+@app.route('/api/reset-password', methods=['POST'])
 def reset_password():
     data = request.get_json()
     token = data.get('token')
@@ -331,5 +331,5 @@ if __name__ == '__main__':
     if os.getenv('ENVIRONMENT')== 'LOCAL':
         app.run(debug=True, ssl_context=('localhost.pem', 'localhost-key.pem'), port=5001)
     else:
-        app.run(debug=True, port=5001)
+        app.run(debug=True, host='127.0.0.1', port=5001)
 
