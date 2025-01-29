@@ -191,7 +191,6 @@ const ToggleLeft = styled(TogglePanel)`
 
 const Login = () => {
   const apiUrl = process.env.REACT_APP_API_URI;
-  console.log("ENV variable is: ", apiUrl);
   const [isSignUpVisible, setIsSignUpVisible] = useState(false);
   const [signUpObj, setSignUpObj] = useState({
     name: "",
@@ -219,7 +218,7 @@ const Login = () => {
   const onRegister = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(`${apiUrl}/register`, signUpObj);
+      const response = await axios.post(`${apiUrl}/api/register`, signUpObj);
       alert("Registration Successful");
       console.log(response);
       setIsSignUpVisible(false);
@@ -234,7 +233,7 @@ const Login = () => {
   const onLogin = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(`${apiUrl}/login`, loginObj);
+      const response = await axios.post(`${apiUrl}/api/login`, loginObj);
       if (response.data.message === "Login successful") {
         localStorage.setItem("loggedUser", JSON.stringify(response.data));
         login(response.data); // Set isLoggedIn to true
