@@ -1,5 +1,6 @@
 import json
 
+from training import estimate_local_causal_effect_jointly
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
@@ -48,7 +49,9 @@ def add_cors_headers(response):
 @app.route('/api/register', methods=['POST'])
 def register():
     data = request.get_json()
-    username = data.get('name')
+    username = data.get('username')
+    full_name = data.get('name')
+    # user_id = data.get('user_id')
     email = data.get('email')
     password = data.get('password')
     level = data.get('level')
@@ -63,6 +66,7 @@ def register():
     hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
     users_collection.insert_one({
         "username": username,
+        "full_name": full_name,
         "email": email,
         "password": hashed_password,
         "level": level,
@@ -310,14 +314,15 @@ def delete_model(model_id):
         print(f"Error deleting model: {e}")
         return jsonify({"error": "An error occurred"}), 500
 
-@app.route('/retrain', methods=['POST'])
+@app.route('/api/retrain', methods=['POST'])
 def retrain_model():
     try:
         # Get the graph data from the request
         graph_data = request.get_json()
 
         # Call the LSTM training function with the received graph data
-        updated_weights = train_lstm_with_target(graph_data, graph_data.get('selectedTarget'))
+        # updated_weights = train_lstm_with_target(graph_data, graph_data.get('selectedTarget'))
+        updated_weights = estimate_local_causal_effect_jointly(graph_data, 10)
         print("Updated weights are: ", updated_weights)
 
         # Return the updated weights to the frontend

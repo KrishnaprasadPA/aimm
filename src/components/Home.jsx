@@ -556,7 +556,7 @@ const Home = () => {
 
   const retrainModel = async (graphData) => {
     try {
-      const response = await axios.post(`${apiUrl}/retrain`, graphData);
+      const response = await axios.post(`${apiUrl}/api/retrain`, graphData);
       const updatedWeights = response.data.updated_weights;
 
       updateGraphWeights(graphRef.current.graph, updatedWeights);
