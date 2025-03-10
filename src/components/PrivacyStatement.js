@@ -11,7 +11,7 @@ const Parent = styled.div`
   justify-content: center;
   flex-direction: column;
   height: 100vh;
-  font-family: "Montserrat", sans-serif;
+  font-family: "Nunito Sans", sans-serif;
 `;
 
 const Navbar = styled.div`

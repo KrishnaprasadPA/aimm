@@ -12,7 +12,7 @@ const Parent = styled.div`
   justify-content: center;
   flex-direction: column;
   height: 100vh;
-  font-family: "Montserrat", sans-serif;
+  font-family: "Nunito Sans", sans-serif;
 `;
 
 const Container = styled.div`
@@ -146,7 +146,7 @@ const Registration = () => {
     const dataToSend = {
       name: formValues.fullName,
       username: formValues.preferredName,
-      user_id: formValues.userId,
+      // user_id: formValues.userId,
       email: formValues.email,
       password: formValues.password,
       level: level,
@@ -197,14 +197,14 @@ const Registration = () => {
             placeholder={t("email")}
             required
           />
-          <Input
+          {/* <Input
             type="text"
             name="userId"
             value={formValues.userId}
             onChange={handleChange}
             placeholder={t("user_id")}
             required
-          />
+          /> */}
           <Input
             type="password"
             name="password"
