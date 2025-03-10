@@ -1,4 +1,4 @@
-/* AddFactorModal.css */
+/* AddFactorModal.css
 
 .model-overlay {
   position: fixed;
@@ -20,7 +20,7 @@
   border-radius: 5px;
   max-width: 500px;
   width: 100%;
-  max-height: 600px;
+  max-height: 800px;
   overflow-y: auto;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
@@ -59,7 +59,7 @@ label {
 input[type="text"],
 input[type="number"],
 textarea {
-  width: 100%;
+  width: 90%;
   padding: 10px;
   border: 1px solid #ddd;
   border-radius: 4px;
@@ -135,4 +135,256 @@ textarea {
 
 .btn-secondary:hover {
   background-color: #c20f0f;
+}
+
+.delete-year-btn {
+  background: none;
+  border: none;
+  color: red;
+  cursor: pointer;
+  font-size: 14px;
+  margin-left: 5px;
+  padding: 0;
+}
+
+.delete-year-btn:hover {
+  color: darkred;
+}
+
+.time-series-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.year-input {
+  display: flex;
+  align-items: center;
+}
+
+.tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.tabs button {
+  padding: 8px 15px;
+  border: none;
+  background-color: #f0f0f0;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.tabs button.active {
+  background-color: #975c5c;
+  color: #fff;
+}
+
+.graph-options {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.graph-options button {
+  padding: 8px 15px;
+  border: none;
+  background-color: #f0f0f0;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.chart-container {
+  margin-top: 20px;
+} */
+
+/* AddFactorModal.css */
+
+.model-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.model-content {
+  position: relative;
+  background-color: white;
+  padding: 20px;
+  border-radius: 5px;
+  max-width: 800px; /* Increased width */
+  width: 100%;
+  max-height: 800px;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #da2222;
+}
+
+.close-btn:hover {
+  color: #333;
+}
+
+h2 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #555;
+}
+
+input[type="text"],
+input[type="number"],
+textarea {
+  width: 90%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+textarea {
+  height: 100px;
+  resize: vertical;
+}
+
+.time-series-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr); /* 5 columns */
+  gap: 10px;
+}
+
+.year-input {
+  display: flex;
+  flex-direction: column;
+}
+
+.year-input label {
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.year-input input {
+  width: 100%;
+  padding: 4px;
+  font-size: 12px;
+}
+
+.form-actions {
+  margin-top: 20px;
+  text-align: right;
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-time {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
+
+.btn-time {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-time:hover {
+  background-color: #0056b3;
+}
+
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #0056b3;
+}
+
+.btn-secondary {
+  background-color: #f02f2f;
+  color: white;
+  margin-left: 10px;
+}
+
+.btn-secondary:hover {
+  background-color: #c20f0f;
+}
+
+.delete-year-btn {
+  background: none;
+  border: none;
+  color: red;
+  cursor: pointer;
+  font-size: 14px;
+  margin-left: 5px;
+  padding: 0;
+}
+
+.delete-year-btn:hover {
+  color: darkred;
+}
+
+.tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.tabs button {
+  padding: 8px 15px;
+  border: none;
+  background-color: #f0f0f0;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.tabs button.active {
+  background-color: #975c5c;
+  color: #fff;
+}
+
+.graph-options {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.graph-options button {
+  padding: 8px 15px;
+  border: none;
+  background-color: #f0f0f0;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.chart-container {
+  margin-top: 20px;
 }

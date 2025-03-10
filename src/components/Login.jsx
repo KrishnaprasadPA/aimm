@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import styled from "styled-components";
 import { useTranslation } from "react-i18next";
 import "../i18n";
 import { useAuth } from "../context/AuthContext";
+import CookieConsent from "./CookieConsent"; // Import CookieConsent Component
 
 // Styled components
 const Parent = styled.div`
@@ -16,7 +17,21 @@ const Parent = styled.div`
   justify-content: center;
   flex-direction: column;
   height: 100vh;
-  font-family: "Montserrat", sans-serif;
+  font-family: "Nunito Sans", sans-serif;
+`;
+
+const DescriptionContainer = styled.div`
+  position: absolute;
+  bottom: 20px; // Keeps it at the bottom of the screen
+  left: 50%;
+  transform: translateX(-50%); // Centers it horizontally
+  padding: 0 40px; // Adds padding to the left and right
+  text-align: center;
+  font-size: 13px;
+  color: #fff;
+  max-width: 100%;
+  border-radius: 10px;
+  line-height: 1.6; // Increases line height to avoid text looking too cramped
 `;
 
 const Navbar = styled.div`
@@ -49,13 +64,14 @@ const LanguageButton = styled.button`
 
 const Container = styled.div`
   background-color: #fff;
-  border-radius: 30px;
+  border-radius: 20px;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.35);
   position: relative;
   overflow: hidden;
   width: 768px;
   max-width: 100%;
   min-height: 480px;
+  margin-top: -220px;
 `;
 
 const FormContainer = styled.div`
@@ -183,7 +199,7 @@ const ToggleRight = styled(TogglePanel)`
 `;
 
 const ToggleLeft = styled(TogglePanel)`
-  right: 0;
+  right: -30px;
   transform: translateX(0);
   ${(props) =>
     props.signingUp !== true ? `transform: translateX(200%);` : null}
@@ -191,7 +207,7 @@ const ToggleLeft = styled(TogglePanel)`
 
 const Login = () => {
   const apiUrl = process.env.REACT_APP_API_URI;
-  const [isSignUpVisible, setIsSignUpVisible] = useState(false);
+  const [isSignUpVisible, setIsSignUpVisible] = useState(true);
   const [signUpObj, setSignUpObj] = useState({
     name: "",
     email: "",
@@ -229,6 +245,26 @@ const Login = () => {
   };
 
   const { login } = useAuth();
+
+  const [isCookieConsentVisible, setIsCookieConsentVisible] = useState(false);
+
+  useEffect(() => {
+    // Check if the user has accepted cookies
+    if (!localStorage.getItem("cookiesAccepted")) {
+      setIsCookieConsentVisible(true);
+    }
+  }, []);
+
+  const handleCookieConsent = () => {
+    localStorage.setItem("cookiesAccepted", true); // Save cookie acceptance in localStorage
+    setIsCookieConsentVisible(false); // Hide the cookie consent banner
+  };
+
+  const handleCookieReject = () => {
+    localStorage.setItem("cookiesAccepted", false); // Save cookie rejection in localStorage
+    setIsCookieConsentVisible(false); // Hide the cookie consent banner
+    // logout(); // Optionally, log the user out or clear session data
+  };
 
   const onLogin = async (e) => {
     e.preventDefault();
@@ -334,9 +370,6 @@ const Login = () => {
             >
               {t("forgot_password")}
             </button>
-            {/* <a href="#" style={{ color: "#6e3a82", textDecoration: "none" }}>
-              {t("forgot_password")}
-            </a> */}
             <Button type="submit">{t("sign_in")}</Button>
           </Form>
         </SignInContainer>
@@ -345,7 +378,7 @@ const Login = () => {
             <ToggleLeft signingUp={isSignUpVisible}>
               <Title>{t("hello_user")}</Title>
               <p>{t("register_info")}</p>
-              <Button onClick={() => setIsSignUpVisible(false)}>
+              <Button onClick={() => navigate("/register")}>
                 {t("sign_up")}
               </Button>
             </ToggleLeft>
@@ -359,6 +392,139 @@ const Login = () => {
           </Toggle>
         </ToggleContainer>
       </Container>
+      <DescriptionContainer>
+        {/* <p>
+          AIMM (AI-driven Mental Modeler) is being developed by the{" "}
+          <a
+            href="https://www.waterdmd.info"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            waterDMD
+          </a>{" "}
+          lab at Arizona State University. This was designed as a learning and
+          research tool for understanding the Mental Models of diverse
+          stakeholders. We invite you to develop your Mental Model for the
+          system and explore others. The research is supported by NASA LCLUC{" "}
+          <a
+            href="https://lcluc.umd.edu/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <img
+              src={process.env.PUBLIC_URL + "/lcluc.png"} // Image in the public folder
+              alt="NASA LCLUC logo"
+              style={{
+                width: "30px",
+                height: "30px",
+                verticalAlign: "middle",
+                marginLeft: "5px",
+              }}
+            />
+          </a>
+          through a research grant for the project “Exploring the Nexus between
+          LCLUC, Socio-Economic Factors, and Water for a Vulnerable Arid
+          US-Mexico Transboundary Region”({" "}
+          <a
+            href="https://lcluc.umd.edu/projects/exploring-nexus-between-lcluc-socio-economic-factors-and-water-vulnerable-arid-us-mexico"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            #80NSSC23K0507
+          </a>{" "}
+          ) led by PI Saurav Kumar.
+        </p>
+        <p>
+          This research was reviewed by ASU IRB# XXXX. For any questions, please
+          email Saurav Kumar at{" "}
+          <a
+            href="mailto:sk2@asu.edu"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            sk2@asu.edu
+          </a>{" "}
+          or ASU IRB directly at XXX.
+        </p>
+        <p>
+          Please read our{" "}
+          <a
+            href="/privacy-statement"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            privacy statement
+          </a>{" "}
+          here.
+        </p> */}
+        <p>
+          {t("aimm_intro")}{" "}
+          <a
+            href="https://www.waterdmd.info"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            waterDMD
+          </a>{" "}
+          {t("aimm_lab_description")}
+        </p>
+        <p>
+          {t("nasa_funding")}{" "}
+          <a
+            href="https://lcluc.umd.edu/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <img
+              src={process.env.PUBLIC_URL + "/lcluc.png"}
+              alt="NASA LCLUC logo"
+              style={{
+                width: "30px",
+                height: "30px",
+                verticalAlign: "middle",
+                marginLeft: "5px",
+              }}
+            />
+          </a>{" "}
+          {t("nasa_project")}{" "}
+          <a
+            href="https://lcluc.umd.edu/projects/exploring-nexus-between-lcluc-socio-economic-factors-and-water-vulnerable-arid-us-mexico"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            #80NSSC23K0507
+          </a>{" "}
+          {t("nasa_pi")}
+        </p>
+        <p>
+          {t("irb_review")}{" "}
+          <a
+            href="mailto:sk2@asu.edu"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t("contact_pi")}
+          </a>{" "}
+          {t("or_irb")}{" "}
+        </p>
+        <p>
+          {t("privacy_notice")}{" "}
+          <a
+            href="/privacy-statement"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t("privacy_statement")}
+          </a>
+          .
+        </p>
+      </DescriptionContainer>
+      {isCookieConsentVisible && (
+        <CookieConsent
+          onAccept={handleCookieConsent}
+          onReject={handleCookieReject}
+        />
+      )}
     </Parent>
   );
 };

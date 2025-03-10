@@ -1,5 +1,6 @@
 import json
 
+from training import estimate_causal_effects_and_predict
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
@@ -48,7 +49,9 @@ def add_cors_headers(response):
 @app.route('/api/register', methods=['POST'])
 def register():
     data = request.get_json()
-    username = data.get('name')
+    username = data.get('username')
+    full_name = data.get('name')
+    # user_id = data.get('user_id')
     email = data.get('email')
     password = data.get('password')
     level = data.get('level')
@@ -63,6 +66,7 @@ def register():
     hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
     users_collection.insert_one({
         "username": username,
+        "full_name": full_name,
         "email": email,
         "password": hashed_password,
         "level": level,
@@ -156,12 +160,19 @@ def reset_password():
 
 @app.route('/api/target', methods=['GET'])
 def get_targets():
-    targets = list(target_collection.find({}, {"_id": 0}))
+    targets = list(target_collection.find({}))  # Fetch all documents
+
+    for target in targets:
+        target['_id'] = str(target['_id'])
+
     return jsonify(targets)
 
 @app.route('/api/factors', methods=['GET'])
 def get_factors():
-    factors = list(factors_collection.find({}, {"_id": 0}))
+    factors = list(factors_collection.find({}))
+
+    for factor in factors:
+        factor['_id'] = str(factor['_id'])
     return jsonify(factors)
 
 
@@ -170,6 +181,7 @@ def add_factors():
     data = request.get_json()
     factorname = data.get('name')
     description = data.get('description')
+    color = data.get('color')
     time_series = [float(x) for x in data.get('timeSeries', [])]  # Assuming timeSeries is an array of 25 values
 
     if factors_collection.find_one({"name": factorname}):
@@ -177,9 +189,9 @@ def add_factors():
 
     # Prepare time series data
     time_series_data = []
-    years = range(2000, 2025)  # 25 years from 2000 to 2024
+    years = range(1993, 2035)  # 43 years from 1993 to 2035
 
-    if len(time_series) == 25:
+    if len(time_series) == 43:
         # Calculate normalized values
         min_value = min(time_series)
         max_value = max(time_series)
@@ -196,6 +208,7 @@ def add_factors():
         "name": factorname,
         "description": description,
         "time_series_data": time_series_data,
+        "color": color,
         "creator": "user",
         "base": "new"
     }
@@ -204,11 +217,9 @@ def add_factors():
 
     if result.inserted_id:
         print("Added successfully")
-        return jsonify({"message": "Factor added successfully", "id": str(result.inserted_id)}), 201
+        return jsonify({"message": "Factor added successfully"}), 201
     else:
         return jsonify({"message": "Failed to add factor"}), 500
-
-    # return jsonify({"message": "Factor added successfully"}), 201
 
 
 @app.route('/api/models', methods=['GET'])
@@ -310,18 +321,19 @@ def delete_model(model_id):
         print(f"Error deleting model: {e}")
         return jsonify({"error": "An error occurred"}), 500
 
-@app.route('/retrain', methods=['POST'])
+@app.route('/api/retrain', methods=['POST'])
 def retrain_model():
     try:
         # Get the graph data from the request
         graph_data = request.get_json()
 
         # Call the LSTM training function with the received graph data
-        updated_weights = train_lstm_with_target(graph_data, graph_data.get('selectedTarget'))
+        # updated_weights = train_lstm_with_target(graph_data, graph_data.get('selectedTarget'))
+        updated_weights = estimate_causal_effects_and_predict(graph_data)
         print("Updated weights are: ", updated_weights)
 
         # Return the updated weights to the frontend
-        return jsonify({"updated_weights": updated_weights}), 200
+        return jsonify(updated_weights), 200
 
     except Exception as e:
         print("Error ", e)

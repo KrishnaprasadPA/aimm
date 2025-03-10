@@ -33,8 +33,8 @@ const ModelVisualization = ({ model, open, onClose, onDuplicate }) => {
         const paper = new joint.dia.Paper({
           el: visualizeGraphRef.current, // Use .current to access the DOM element
           model: graph,
-          width: 1000, // Fallback width
-          height: 800, // Fallback height
+          width: 1200, // Fallback width
+          height: 650, // Fallback height
           gridSize: 10,
           drawGrid: true,
           interactive: { linkMove: true },
@@ -107,35 +107,6 @@ const ModelVisualization = ({ model, open, onClose, onDuplicate }) => {
         paper.on("cell:pointerclick", (cellView) => {
           const element = cellView.model;
         });
-
-        // Loop through cells and adjust z-index for rectangles and links
-        // parsedGraphData.cells.forEach((cell) => {
-        //   if (cell.type === "standard.Rectangle") {
-        //     console.log("Inside cell.Rect");
-
-        //     // Ensure z-index is set (increase it to ensure visibility)
-        //     cell.z = 2000; // Default z-index for rectangles
-
-        //     // Ensure attrs.body exists and has valid fill/stroke values
-        //     cell.attrs = cell.attrs || {};
-        //     console.log("Cell bod is :", cell.attrs.body);
-        //     cell.attrs.body = cell.attrs.body || {
-        //       fill: "#8e7fa2", // Default fill color if missing
-        //       stroke: "#121212", // Default stroke color if missing
-        //       strokeWidth: 2,
-        //       borderRadius: 3,
-        //     };
-        //     cell.attrs.label = cell.attrs.label || {
-        //       text: "Label",
-        //       fill: "#FFFFFF", // Label text color
-        //       fontSize: 12,
-        //     };
-        //   } else if (cell.type === "standard.Link") {
-        //     console.log("Inside cell.Link");
-        //     // Ensure z-index is set for links as well (set it higher than rectangles)
-        //     cell.z = 2010; // Default z-index for links to ensure they're above rectangles
-        //   }
-        // });
 
         try {
           graph.fromJSON(parsedGraphData); // Load the graph data into JointJS
@@ -241,27 +212,38 @@ const ModelVisualization = ({ model, open, onClose, onDuplicate }) => {
           top: "50%", // Center vertically
           left: "50%", // Center horizontally
           transform: "translate(-50%, -50%)", // Move the box back by half its width and height to center it
-          width: 1000, // Set a fixed width for the modal
+          width: 1200, // Set a fixed width for the modal
           height: 800, // Set a fixed height for the modal
-          bgcolor: "#F0FFFF", // Background color for better visibility
+          bgcolor: "#ecf2ff", // Background color for better visibility
           boxShadow: 2, // Add some shadow for depth effect
           p: 2, // Padding inside the Box
           zIndex: 2, // Set a lower z-index if needed (adjust as per your requirement)
+          borderRadius: "8px",
         }}
       >
         {/* Title Section */}
-        <Typography variant="h6" sx={{ textAlign: "center" }}>
+        <Typography variant="h5" sx={{ textAlign: "center", mb: 2 }}>
           Model for {model ? model.target_factor : ""}
         </Typography>
-        <Typography variant="subtitle1" sx={{ textAlign: "center", mb: 2 }}>
+        {/* <Typography variant="subtitle1" sx={{ textAlign: "center", mb: 2 }}>
           {model ? model.name : ""}
-        </Typography>
+        </Typography> */}
 
         {/* Visualization Area */}
         <div
           ref={visualizeGraphRef}
-          style={{ width: "100%", height: "100%" }}
+          style={{
+            width: "100%",
+            height: "200px",
+            border: "0.5px solid black",
+            borderRadius: "8px",
+            backgroundColor: "#ecf2ff",
+            background: "url('/dotBackground.jpeg')",
+          }}
         ></div>
+        <Typography variant="subtitle1" sx={{ textAlign: "center", mt: 2 }}>
+          {model ? model.name : ""}
+        </Typography>
 
         {/* Close Button */}
         <IconButton

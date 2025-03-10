@@ -1,5 +1,3 @@
-// LinkModal.js
-
 class LinkModal {
   constructor() {
     this.linkModal = document.createElement("div");
@@ -38,9 +36,13 @@ class LinkModal {
     };
 
     this.updateCallback = null;
+    this.link = null; // Store the link object
   }
 
   show(link, updateCallback) {
+    // Store the link object
+    this.link = link;
+
     // Set default weight to 1 if not provided
     this.weightInput.value =
       link.get("weight") !== undefined ? link.get("weight") : 1;
@@ -73,6 +75,39 @@ class LinkModal {
         weight: weightValue,
         trainable: this.trainableToggle.checked,
       });
+
+      // Update the link's appearance dynamically
+      if (this.link) {
+        this.link.attr({
+          line: {
+            stroke: this.getLinkColor(weightValue), // Dynamic color
+            strokeWidth: this.getLinkThickness(weightValue), // Dynamic thickness
+          },
+        });
+      }
+    }
+  }
+
+  // Helper function to calculate link thickness based on weight
+  getLinkThickness(weight) {
+    const absoluteWeight = Math.abs(weight);
+    // Thickness ranges from 1 (minimum) to 3 (maximum)
+    return 0.5 + absoluteWeight * 3; // Adjust multiplier as needed
+  }
+
+  // Helper function to calculate link color based on weight
+  getLinkColor(weight) {
+    if (weight < 0) {
+      // Negative weights: red gradient
+      const intensity = Math.abs(weight); // Intensity of red
+      return `rgba(255, ${100 - intensity * 100}, ${100 - intensity * 100}, 1)`;
+    } else if (weight > 0) {
+      // Positive weights: blue gradient
+      const intensity = weight; // Intensity of blue
+      return `rgba(${100 - intensity * 100}, ${100 - intensity * 100}, 255, 1)`;
+    } else {
+      // Neutral weight: black
+      return "black";
     }
   }
 
@@ -163,7 +198,6 @@ class LinkModal {
           transition: 0.4s;
           border-radius: 18px;
           horizontal-align: middle;
-
         }
   
         .slider:before {
