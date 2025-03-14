@@ -5,8 +5,8 @@ import { useTranslation } from "react-i18next";
 import axios from "axios";
 
 const Parent = styled.div`
-  background-color: #c9d6ff;
-  background: linear-gradient(to right, #d8b4d4, #60396e);
+  background-color: #ff9a9e;
+  background: linear-gradient(to right, #ff9a9e, #fad0c4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -57,7 +57,7 @@ const Input = styled.input`
 `;
 
 const Button = styled.button`
-  background-color: #60396e;
+  background-color: #e64980;
   color: #fff;
   font-size: 12px;
   padding: 10px 45px;
@@ -68,6 +68,9 @@ const Button = styled.button`
   text-transform: uppercase;
   margin-top: 10px;
   cursor: pointer;
+  &:hover {
+    background-color: #d6336c;
+  }
 `;
 
 const CheckboxContainer = styled.div`

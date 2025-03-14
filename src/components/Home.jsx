@@ -18,6 +18,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
 import ResizableChartComponent from "./ResizableChartComponent.js";
+import LoadingSpinner from "./LoadingSpinner";
 
 import {
   Avatar,
@@ -214,6 +215,7 @@ const Home = () => {
   const [openPopovers, setOpenPopovers] = useState([]);
   const [selectedData, setSelectedData] = useState(null);
   const [addedFactors, setAddedFactors] = useState([]);
+  const [isRightCollapsed, setIsRightCollapsed] = useState(false);
 
   const [sourceElement, setSourceElement] = React.useState(null);
   const [sourcePort, setSourcePort] = React.useState(null);
@@ -239,6 +241,7 @@ const Home = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCustomExpanded, setIsCustomExpanded] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleToggleExpand = () => {
     setIsExpanded(!isExpanded);
@@ -430,6 +433,7 @@ const Home = () => {
   const handleDuplicateGraph = (graphData) => {
     // setAddedFactors([]);
     console.log("selected model is: ", selectedModel);
+    setIsRightCollapsed(true);
     setDuplicatedGraphData(graphData);
     setModelName(selectedModel.name + "-copy");
     setSelectedTarget(selectedModel.target_factor);
@@ -543,10 +547,10 @@ const Home = () => {
     }
   };
 
-  const handleViewModel = (model) => {
-    setSelectedModel(model);
-    setShowVisualization(true); // Assuming you already have logic for this
-  };
+  // const handleViewModel = (model) => {
+  //   setSelectedModel(model);
+  //   setShowVisualization(true);
+  // };
 
   const handleDeleteModel = async (modelId) => {
     console.log("This is the modelId: ", modelId);
@@ -654,6 +658,7 @@ const Home = () => {
   };
 
   const handleRetrainClick = () => {
+    setIsLoading(true);
     const graph = graphRef.current.graph; // Assuming `graphRef` holds the JointJS graph instance
 
     const cells = graph.getCells();
@@ -685,6 +690,7 @@ const Home = () => {
 
     // Send data to backend or process further
     retrainModel(graphData);
+    setIsLoading(false);
   };
 
   // const updateGraphWeights = (graph, updatedWeights) => {
@@ -1103,7 +1109,7 @@ const Home = () => {
                               <Box>
                                 {/* View Button */}
                                 <CustomButton
-                                  onClick={() => handleViewModel(model)}
+                                  onClick={() => handleVisualize(model)}
                                 >
                                   View
                                 </CustomButton>
@@ -1441,7 +1447,7 @@ const Home = () => {
             onAddSuccess={handleAddSuccess}
           />
         )}
-        <Button
+        {/* <Button
           onClick={toggleSidebar}
           sx={{
             position: "fixed",
@@ -1460,7 +1466,7 @@ const Home = () => {
           }}
         >
           {isCollapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
-        </Button>
+        </Button> */}
 
         <Grid
           item
@@ -1474,7 +1480,7 @@ const Home = () => {
             color: "#000000",
             height: "92vh",
             flexGrow: 1,
-            marginLeft: isCollapsed ? "0" : "20vw", // Dynamic margin based on collapse state
+            marginLeft: isCollapsed ? "0" : "21.4vw", // Dynamic margin based on collapse state
             width: isCollapsed
               ? "calc(100% - 300px)"
               : "calc(100% - 20vw - 300px)", // Adjust width to account for the right box
@@ -1578,141 +1584,166 @@ const Home = () => {
           </Box>
         </Grid>
         {/* Third Box */}
-        <Grid
-          item
-          md
-          sx={{
-            maxWidth: "300px",
-            paddingTop: "12px",
-            padding: "10px",
-            maxHeight: "92vh",
-            backgroundColor: "#ecf2ff", // Dark grey background
-            color: "black", // White text for contrast
-            height: "100vh",
-            flexDirection: "column",
-            flexGrow: 1, // Ensures it fills the remaining space
-            overflowY: "auto",
-          }}
-        >
-          <Box
+        {!isRightCollapsed && (
+          <Grid
+            item
+            md
             sx={{
-              borderRadius: "10px",
-              boxShadow: "-4px 0px 10px rgba(0, 0, 0, 0.2)", // Darker shadow
-              height: "83vh",
-              overflow: "auto",
-              backgroundColor: "white",
+              maxWidth: "300px",
+              paddingTop: "12px",
+              padding: "10px",
+              maxHeight: "92vh",
+              backgroundColor: "#ecf2ff", // Dark grey background
+              color: "black", // White text for contrast
+              height: "100vh",
+              flexDirection: "column",
+              flexGrow: 1, // Ensures it fills the remaining space
+              overflowY: "auto",
             }}
           >
-            {/* Existing Models Heading (Outside the Loop) */}
-            <Typography
-              variant="h5"
+            <Box
               sx={{
-                textAlign: "center",
-                background: "#F4C2C2",
-                padding: "12px",
-                borderRadius: "10px 10px 0 0",
-                fontWeight: "800",
-                fontFamily: "Nunito Sans, sans-serif",
-                position: "sticky", // Make it sticky
-                top: 0, // Stick to the top
-                borderBottom: 0.5,
+                borderRadius: "10px",
+                boxShadow: "-4px 0px 10px rgba(0, 0, 0, 0.2)", // Darker shadow
+                height: "83vh",
+                overflow: "auto",
+                backgroundColor: "white",
               }}
             >
-              Existing Models
-            </Typography>
-
-            {/* Loop for User Groups and Models */}
-            {modelLevels.map((level) => (
-              <Box
-                key={level.level}
+              {/* Existing Models Heading */}
+              <Typography
+                variant="h5"
                 sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  borderRadius: "12px",
-                  padding: "16px",
+                  textAlign: "center",
+                  background: "#F4C2C2",
+                  padding: "12px",
+                  borderRadius: "10px 10px 0 0",
+                  fontWeight: "800",
+                  fontFamily: "Nunito Sans, sans-serif",
+                  position: "sticky", // Make it sticky
+                  top: 0, // Stick to the top
+                  borderBottom: 0.5,
                 }}
               >
-                {/* User Group Heading */}
-                <Typography
+                Existing Models
+              </Typography>
+
+              {/* Loop for User Groups and Models */}
+              {modelLevels.map((level) => (
+                <Box
+                  key={level.level}
                   sx={{
-                    width: "100%",
-                    fontSize: "18px",
-                    padding: "4px",
-                    marginBottom: "16px",
-                    border: "0.5px solid #a19b9b",
-                    borderRadius: "6px",
-                    paddingLeft: "8px",
-                    fontWeight: "600",
-                    fontFamily: "Nunito Sans, sans-serif",
-                    color: "white",
-                    bgcolor: "#666b73",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    borderRadius: "12px",
+                    padding: "16px",
                   }}
                 >
-                  User Group {level.level}
-                </Typography>
-
-                {/* Loop for Models */}
-                {level.models.map((model) => (
-                  <Box
-                    key={model.name}
+                  {/* User Group Heading */}
+                  <Typography
                     sx={{
                       width: "100%",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
+                      fontSize: "18px",
+                      padding: "4px",
                       marginBottom: "16px",
-                      border: "solid 0.5px #cfcccc",
-                      backgroundColor: "#fad9d9",
-                      gap: 2,
-                      paddingTop: "4px",
-                      paddingBottom: "8px",
-                      borderRadius: "5px",
+                      border: "0.5px solid #a19b9b",
+                      borderRadius: "6px",
+                      paddingLeft: "8px",
+                      fontWeight: "600",
+                      fontFamily: "Nunito Sans, sans-serif",
+                      color: "white",
+                      bgcolor: "#666b73",
                     }}
                   >
-                    <Typography
-                      sx={{
-                        fontSize: "14px",
-                        fontWeight: "800",
-                        fontFamily: "Nunito Sans, sans-serif",
-                      }}
-                    >
-                      {model.name}
-                    </Typography>
+                    User Group {level.level}
+                  </Typography>
+
+                  {/* Loop for Models */}
+                  {level.models.map((model) => (
                     <Box
+                      key={model.name}
                       sx={{
-                        width: "80%",
+                        width: "100%",
                         display: "flex",
-                        justifyContent: "space-between",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        marginBottom: "16px",
+                        border: "solid 0.5px #cfcccc",
+                        backgroundColor: "#fad9d9",
+                        gap: 2,
+                        paddingTop: "4px",
+                        paddingBottom: "8px",
+                        borderRadius: "5px",
                       }}
                     >
-                      <Typography sx={{ fontSize: "14px" }}>
-                        Quality: {model.quality || "Not Applicable"}
-                      </Typography>
                       <Typography
-                        onClick={() => handleVisualize(model)}
                         sx={{
-                          color: "blue",
                           fontSize: "14px",
-                          cursor: "pointer",
-                          border: "solid 0.5px #cfcccc",
+                          fontWeight: "800",
+                          fontFamily: "Nunito Sans, sans-serif",
                         }}
                       >
-                        View
+                        {model.name}
                       </Typography>
+                      <Box
+                        sx={{
+                          width: "80%",
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Typography sx={{ fontSize: "14px" }}>
+                          Quality: {model.quality || "Not Applicable"}
+                        </Typography>
+                        <Typography
+                          onClick={() => handleVisualize(model)}
+                          sx={{
+                            color: "blue",
+                            fontSize: "14px",
+                            cursor: "pointer",
+                            border: "solid 0.5px #cfcccc",
+                          }}
+                        >
+                          View
+                        </Typography>
+                      </Box>
                     </Box>
-                    <ModelVisualization
-                      model={selectedModel}
-                      open={showVisualization}
-                      onClose={() => setShowVisualization(false)}
-                      onDuplicate={handleDuplicateGraph}
-                    />
-                  </Box>
-                ))}
-              </Box>
-            ))}
-          </Box>
-        </Grid>
+                  ))}
+                </Box>
+              ))}
+            </Box>
+          </Grid>
+        )}
+
+        {/* Collapse Button for Right Column */}
+        <Button
+          onClick={() => setIsRightCollapsed(!isRightCollapsed)}
+          sx={{
+            position: "fixed",
+            right: isRightCollapsed ? "0" : "255px", // Adjust based on the width of the right column
+            top: "140px", // Adjust to position below the title bar
+            transition: "right 0.3s ease-in-out",
+            backgroundColor: "black",
+            color: "white",
+            borderRadius: "4px",
+            border: "none",
+            minWidth: "20px",
+            cursor: "pointer",
+            "&:hover": {
+              backgroundColor: "#615050",
+            },
+          }}
+        >
+          {isRightCollapsed ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+        </Button>
+        <ModelVisualization
+          model={selectedModel}
+          open={showVisualization}
+          onClose={() => setShowVisualization(false)}
+          onDuplicate={handleDuplicateGraph}
+        />
+        <LoadingSpinner isLoading={isLoading} />
       </Grid>
     </Box>
   );

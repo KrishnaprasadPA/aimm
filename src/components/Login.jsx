@@ -9,9 +9,11 @@ import CookieConsent from "./CookieConsent"; // Import CookieConsent Component
 
 // Styled components
 const Parent = styled.div`
-  background-color: #c9d6ff;
-  background: linear-gradient(to right, #d8b4d4, #60396e);
-  // background: linear-gradient(to right, #888888, #666666);
+  background: linear-gradient(
+    to right,
+    #ff9a9e,
+    #fad0c4
+  ); // Gradient from light pink to peach
   display: flex;
   align-items: center;
   justify-content: center;
@@ -25,11 +27,12 @@ const DescriptionContainer = styled.div`
   bottom: 20px; // Keeps it at the bottom of the screen
   left: 50%;
   transform: translateX(-50%); // Centers it horizontally
-  padding: 0 40px; // Adds padding to the left and right
+  padding: 20px 40px; // Increased padding for better spacing
   text-align: center;
-  font-size: 13px;
-  color: #fff;
-  max-width: 100%;
+  font-size: 16px; // Increased font size
+  color: #433531;
+  max-width: 90%; // Increased max-width to take more space
+  width: 100%; // Ensure it takes full width
   border-radius: 10px;
   line-height: 1.6; // Increases line height to avoid text looking too cramped
 `;
@@ -38,7 +41,7 @@ const Navbar = styled.div`
   position: fixed;
   top: 0;
   right: 0;
-  background-color: #60396e;
+  background-color: #ea216870; // Semi-transparent pink
   color: #fff;
   padding: 10px 20px;
   display: flex;
@@ -49,7 +52,7 @@ const Navbar = styled.div`
 `;
 
 const LanguageButton = styled.button`
-  background-color: #8b68a1; // Lighter version of #60396e
+  background-color: #ea216870; // Softer pink
   color: #fff; // White text
   border: none;
   padding: 10px 20px;
@@ -58,12 +61,12 @@ const LanguageButton = styled.button`
   margin-right: 10px; // Optional, adds spacing between buttons
 
   &:hover {
-    background-color: #734f7f; // Slightly darker shade on hover
+    background-color: #e64980; // Slightly darker pink on hover
   }
 `;
 
 const Container = styled.div`
-  background-color: #fff;
+  // background-color: #ea216870; // Match Navbar color
   border-radius: 20px;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.35);
   position: relative;
@@ -131,7 +134,7 @@ const Input = styled.input`
 `;
 
 const Button = styled.button`
-  background-color: #60396e;
+  background-color: #e64980; // Lighter pink
   color: #fff;
   font-size: 12px;
   padding: 10px 45px;
@@ -152,7 +155,7 @@ const ToggleContainer = styled.div`
   height: 100%;
   overflow: hidden;
   transition: all 0.6s ease-in-out;
-  border-radius: 150px 0 0 100px;
+  // border-radius: 150px 0 0 100px;
   z-index: 1000;
   ${(props) =>
     props.signingUp !== true
@@ -164,9 +167,13 @@ const ToggleContainer = styled.div`
 `;
 
 const Toggle = styled.div`
-  background-color: #60396e;
+  background-color: #ea216870; // Match Navbar color
   height: 100%;
-  background: linear-gradient(to right, #8c66a4, #60396e);
+  // background: linear-gradient(
+  //   to right,
+  //   #ea216870,
+  //   #ea216870
+  // ); // Match Navbar color
   color: #fff;
   position: relative;
   left: -100%;
@@ -361,7 +368,7 @@ const Login = () => {
               type="button"
               onClick={() => navigate("/forgot-password")}
               style={{
-                color: "#6e3a82",
+                color: "#e64980", // Lighter pink
                 textDecoration: "none",
                 background: "none",
                 border: "none",
@@ -393,70 +400,6 @@ const Login = () => {
         </ToggleContainer>
       </Container>
       <DescriptionContainer>
-        {/* <p>
-          AIMM (AI-driven Mental Modeler) is being developed by the{" "}
-          <a
-            href="https://www.waterdmd.info"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            waterDMD
-          </a>{" "}
-          lab at Arizona State University. This was designed as a learning and
-          research tool for understanding the Mental Models of diverse
-          stakeholders. We invite you to develop your Mental Model for the
-          system and explore others. The research is supported by NASA LCLUC{" "}
-          <a
-            href="https://lcluc.umd.edu/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <img
-              src={process.env.PUBLIC_URL + "/lcluc.png"} // Image in the public folder
-              alt="NASA LCLUC logo"
-              style={{
-                width: "30px",
-                height: "30px",
-                verticalAlign: "middle",
-                marginLeft: "5px",
-              }}
-            />
-          </a>
-          through a research grant for the project “Exploring the Nexus between
-          LCLUC, Socio-Economic Factors, and Water for a Vulnerable Arid
-          US-Mexico Transboundary Region”({" "}
-          <a
-            href="https://lcluc.umd.edu/projects/exploring-nexus-between-lcluc-socio-economic-factors-and-water-vulnerable-arid-us-mexico"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            #80NSSC23K0507
-          </a>{" "}
-          ) led by PI Saurav Kumar.
-        </p>
-        <p>
-          This research was reviewed by ASU IRB# XXXX. For any questions, please
-          email Saurav Kumar at{" "}
-          <a
-            href="mailto:sk2@asu.edu"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            sk2@asu.edu
-          </a>{" "}
-          or ASU IRB directly at XXX.
-        </p>
-        <p>
-          Please read our{" "}
-          <a
-            href="/privacy-statement"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            privacy statement
-          </a>{" "}
-          here.
-        </p> */}
         <p>
           {t("aimm_intro")}{" "}
           <a

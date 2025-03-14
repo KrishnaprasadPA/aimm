@@ -1,206 +1,3 @@
-/* AddFactorModal.css
-
-.model-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.model-content {
-  position: relative;
-  background-color: white;
-  padding: 20px;
-  border-radius: 5px;
-  max-width: 500px;
-  width: 100%;
-  max-height: 800px;
-  overflow-y: auto;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.close-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #da2222;
-}
-
-.close-btn:hover {
-  color: #333;
-}
-
-h2 {
-  margin-bottom: 20px;
-  color: #333;
-}
-
-.form-group {
-  margin-bottom: 15px;
-}
-
-label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-  color: #555;
-}
-
-input[type="text"],
-input[type="number"],
-textarea {
-  width: 90%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-textarea {
-  height: 100px;
-  resize: vertical;
-}
-
-.time-series-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
-.year-input {
-  display: flex;
-  flex-direction: column;
-}
-
-.year-input label {
-  font-size: 12px;
-  margin-bottom: 2px;
-}
-
-.year-input input {
-  width: 100%;
-  padding: 4px;
-  font-size: 12px;
-}
-
-.form-actions {
-  margin-top: 20px;
-  text-align: right;
-}
-
-.btn-primary,
-.btn-secondary,
-.btn-time {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.3s;
-}
-
-.btn-time {
-  background-color: #007bff;
-  color: white;
-}
-
-.btn-time:hover {
-  background-color: #0056b3;
-}
-
-.btn-primary {
-  background-color: #007bff;
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: #0056b3;
-}
-
-.btn-secondary {
-  background-color: #f02f2f;
-  color: white;
-  margin-left: 10px;
-}
-
-.btn-secondary:hover {
-  background-color: #c20f0f;
-}
-
-.delete-year-btn {
-  background: none;
-  border: none;
-  color: red;
-  cursor: pointer;
-  font-size: 14px;
-  margin-left: 5px;
-  padding: 0;
-}
-
-.delete-year-btn:hover {
-  color: darkred;
-}
-
-.time-series-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 10px;
-}
-
-.year-input {
-  display: flex;
-  align-items: center;
-}
-
-.tabs {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.tabs button {
-  padding: 8px 15px;
-  border: none;
-  background-color: #f0f0f0;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.tabs button.active {
-  background-color: #975c5c;
-  color: #fff;
-}
-
-.graph-options {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.graph-options button {
-  padding: 8px 15px;
-  border: none;
-  background-color: #f0f0f0;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.chart-container {
-  margin-top: 20px;
-} */
-
-/* AddFactorModal.css */
-
 .model-overlay {
   position: fixed;
   top: 0;
@@ -387,4 +184,119 @@ textarea {
 
 .chart-container {
   margin-top: 20px;
+}
+
+.graph-options {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.graph-options button {
+  padding: 8px 15px;
+  border: none;
+  background-color: #f0f0f0;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #555;
+}
+
+.form-group input[type="number"] {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+/* Small Input Modal */
+.small-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1001; /* Ensure it's above the main modal */
+}
+
+.small-modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 5px;
+  width: 300px;
+  text-align: center;
+}
+
+.small-modal-content h3 {
+  margin-bottom: 15px;
+  font-size: 16px;
+  color: #333;
+}
+
+.small-modal-content input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  margin-bottom: 15px;
+}
+
+.input-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.input-group input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.small-modal-actions {
+  display: flex;
+  justify-content: space-between;
+}
+
+.small-modal-actions button {
+  padding: 8px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.small-modal-actions button:first-child {
+  background-color: #975c5c;
+  color: white;
+}
+
+.small-modal-actions button:first-child:hover {
+  background-color: #574141;
+}
+
+.small-modal-actions button:last-child {
+  background-color: #f02f2f;
+  color: white;
+}
+
+.small-modal-actions button:last-child:hover {
+  background-color: #c20f0f;
 }

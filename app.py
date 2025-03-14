@@ -195,7 +195,7 @@ def add_factors():
         # Calculate normalized values
         min_value = min(time_series)
         max_value = max(time_series)
-        normalized_values = [(x - min_value) / (max_value - min_value) if max_value != min_value else 0 for x in time_series]
+        normalized_values = [x for x in time_series]
 
         for year, value, normalized_value in zip(years, time_series, normalized_values):
             time_series_data.append({
