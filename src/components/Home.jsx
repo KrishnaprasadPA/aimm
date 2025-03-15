@@ -34,6 +34,7 @@ import {
   TextField,
   Button,
   Modal,
+  popoverClasses,
 } from "@mui/material";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -242,6 +243,7 @@ const Home = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCustomExpanded, setIsCustomExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isEditingOwnModel, setIsEditingOwnModel] = useState(false);
 
   const handleToggleExpand = () => {
     setIsExpanded(!isExpanded);
@@ -423,32 +425,31 @@ const Home = () => {
     // Update any additional state if needed.
   };
 
-  const handleVisualize = (model) => {
+  const handleVisualize = (model, popupState) => {
     if (model) {
       setSelectedModel(model);
       setShowVisualization(true);
+      popupState.close();
     }
   };
 
   const handleDuplicateGraph = (graphData) => {
-    // setAddedFactors([]);
-    console.log("selected model is: ", selectedModel);
     setIsRightCollapsed(true);
     setDuplicatedGraphData(graphData);
     setModelName(selectedModel.name + "-copy");
     setSelectedTarget(selectedModel.target_factor);
     setModelQuality(selectedModel.quality || "Not trained yet");
+    setIsEditingOwnModel(false);
   };
 
   const handleClear = () => {
     if (graphRef.current && graphRef.current.graph) {
-      // Clear all elements and links from the graph
       graphRef.current.graph.clear();
       setAddedFactors([]);
       setSelectedModel(null);
       setModelName("");
       setModelQuality("Not trained yet");
-
+      setIsEditingOwnModel(false); // Reset to false
       console.log("Graph cleared");
     }
   };
@@ -560,6 +561,18 @@ const Home = () => {
     } catch (error) {
       console.error("Error deleting model:", error);
     }
+  };
+
+  const handleEditModel = (model, popupState) => {
+    setSelectedModel(model);
+    setModelName(model.name);
+    setSelectedTarget(model.target_factor);
+    setModelQuality(model.quality || "Not trained yet");
+    setDuplicatedGraphData(JSON.parse(model.graph_data));
+    setIsRightCollapsed(true);
+    setShowVisualization(false);
+    setIsEditingOwnModel(true); // Set to true when editing own model
+    popupState.close();
   };
 
   const onSearchInput = () => {
@@ -978,8 +991,13 @@ const Home = () => {
     const savableData = convertGraphToSavableFormat(graph);
 
     try {
-      const response = await fetch(`${apiUrl}/api/models`, {
-        method: "POST",
+      const url = isEditingOwnModel
+        ? `${apiUrl}/api/models/update/${selectedModel.id}` // Update existing model
+        : `${apiUrl}/api/models`; // Save new model
+      const method = isEditingOwnModel ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method: method,
         headers: {
           "Content-Type": "application/json",
         },
@@ -994,6 +1012,10 @@ const Home = () => {
       if (response.ok) {
         console.log("Model saved successfully:", result);
         alert("Model saved successfully!");
+        if (!isEditingOwnModel) {
+          // If it's a new model, reload the models
+          loadUserModels(userId);
+        }
       } else {
         console.error("Failed to save models:", result.message);
         alert(result.message || "Failed to save models.");
@@ -1109,9 +1131,19 @@ const Home = () => {
                               <Box>
                                 {/* View Button */}
                                 <CustomButton
-                                  onClick={() => handleVisualize(model)}
+                                  onClick={() =>
+                                    handleVisualize(model, popupState)
+                                  }
                                 >
                                   View
+                                </CustomButton>
+                                {/* Edit Button */}
+                                <CustomButton
+                                  onClick={() =>
+                                    handleEditModel(model, popupState)
+                                  }
+                                >
+                                  Edit
                                 </CustomButton>
 
                                 {/* Delete Button */}
@@ -1517,7 +1549,7 @@ const Home = () => {
                   saveGraphToAPI(graphRef.current.graph);
                 }}
               >
-                Save
+                {isEditingOwnModel ? "Update" : "Save"}
               </CustomButton>
               <CustomButton onClick={handleRetrainClick}>Retrain</CustomButton>
             </Box>

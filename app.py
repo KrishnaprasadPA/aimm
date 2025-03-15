@@ -302,6 +302,41 @@ def save_model():
     except Exception as e:
         print("Error creating model:", e)
         return jsonify({"error": "An error occurred while creating the model."}), 500
+    
+@app.route('/api/models/update/<model_id>', methods=['PUT'])
+def update_model(model_id):
+    try:
+        # Parse the JSON request data
+        data = request.get_json()
+        # Validate required fields
+        required_fields = ["name", "description", "links", "target_factor", "creator"]
+        for field in required_fields:
+            if not (field in data):
+                print("Data is missing: ", field)
+                return jsonify({"error": "Missing required fields"}), 400
+
+        # Construct the model document
+        model = {
+            "name": data["name"],
+            "description": data["description"],
+            "links": data.get("links", []),  # Default to an empty list if not provided
+            "target_factor": data["target_factor"],
+            "creator": data["creator"],  # Convert creator ID to ObjectId if provided as a string
+            "quality": data.get("quality", None),  # Optional field, default is None
+            "graph_data": data.get("graphData"),
+            "deleted": data.get("deleted", False)  # Optional, defaults to False
+        }
+
+        # Update the model in the database
+        result = models_collection.update_one({"_id": ObjectId(model_id)}, {"$set": model})
+        if result.matched_count == 0:
+            return jsonify({"error": "Model not found"}), 404
+
+        return jsonify({"message": "Model updated successfully"}), 200
+
+    except Exception as e:
+        print("Error updating model:", e)
+        return jsonify({"error": "An error occurred while updating the model."}), 500
 
 @app.route('/api/models/delete/<model_id>', methods=['DELETE'])
 def delete_model(model_id):
