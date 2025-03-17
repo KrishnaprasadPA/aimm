@@ -1,6 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./AddFactorModal.css";
-import axios from "axios";
 import styled from "styled-components";
 import { Line } from "react-chartjs-2";
 import {
@@ -57,7 +56,13 @@ const AddFactorModal = ({ onClose, onAddSuccess }) => {
 
   const [maxYear, setMaxYear] = useState(2035); // Track the current maximum year
   const [activeTab, setActiveTab] = useState("table"); // Tabs: 'table' or 'graph'
-  const [graphType, setGraphType] = useState("straight"); // Graph type: 'straight', 'linear', 'exponential'
+  const [graphType, setGraphType] = useState(null); // Graph type: 'straight', 'linear', 'exponential'
+
+  // State for the small input modal
+  const [showInputModal, setShowInputModal] = useState(false);
+  const [singleValue, setSingleValue] = useState(""); // For Straight Line
+  const [startValue, setStartValue] = useState(""); // For Linear and Exponential
+  const [endValue, setEndValue] = useState(""); // For Linear and Exponential
 
   const years = Array.from({ length: maxYear - 1993 + 1 }, (_, i) => 1993 + i);
 
@@ -84,29 +89,14 @@ const AddFactorModal = ({ onClose, onAddSuccess }) => {
     // Calculate the new value based on the graph type
     switch (graphType) {
       case "straight":
-        newValue = 0.5; // Straight line at 0.5
+        newValue = parseFloat(singleValue); // Use the single value for straight line
         break;
-      case "linear-increase":
-        newValue = newFactor.timeSeries.length / newFactor.timeSeries.length; // Linear increase
-        break;
-      case "linear-decrease":
-        newValue =
-          1 - newFactor.timeSeries.length / newFactor.timeSeries.length; // Linear decrease
-        break;
-      case "exponential-increase":
-        newValue = Math.pow(
-          newFactor.timeSeries.length / newFactor.timeSeries.length,
-          2
-        ); // Exponential increase
-        break;
-      case "exponential-decrease":
-        newValue = Math.pow(
-          1 - newFactor.timeSeries.length / newFactor.timeSeries.length,
-          2
-        ); // Exponential decrease
+      case "linear":
+      case "exponential":
+        newValue = parseFloat(endValue); // Use the end value for other graph types
         break;
       default:
-        newValue = 0.5; // Default to straight line
+        newValue = 0.5; // Default to midpoint
     }
 
     // Update the state
@@ -130,35 +120,55 @@ const AddFactorModal = ({ onClose, onAddSuccess }) => {
 
   const handleGraphTypeChange = (type) => {
     setGraphType(type);
-    updateGraphValues(type);
+    setShowInputModal(true); // Show the small input modal
   };
 
-  const updateGraphValues = (type) => {
+  const handleInputSubmit = () => {
+    if (graphType === "straight") {
+      const value = parseFloat(singleValue);
+      if (!isNaN(value) && value >= 0 && value <= 1) {
+        updateGraphValues(graphType, value, value);
+        setShowInputModal(false);
+      } else {
+        alert("Invalid input. Please enter a value between 0 and 1.");
+      }
+    } else {
+      const start = parseFloat(startValue);
+      const end = parseFloat(endValue);
+
+      // Validate start and end values
+      if (!isNaN(start) && !isNaN(end) && start >= 0 && end <= 1) {
+        updateGraphValues(graphType, start, end);
+        setShowInputModal(false);
+      } else {
+        alert("Invalid input. Please enter valid numbers between 0 and 1.");
+      }
+    }
+  };
+
+  const updateGraphValues = (type, start, end) => {
     const updatedTimeSeries = newFactor.timeSeries.map((_, index) => {
-      const x = index; // Year index
+      const x = index / (newFactor.timeSeries.length - 1); // Normalize x to [0, 1]
       let value;
+
       switch (type) {
         case "straight":
-          value = 0.5; // Straight line at 0.5
+          value = start; // Straight line at the provided value
           break;
-        case "linear-increase":
-          value = x / (newFactor.timeSeries.length - 1); // Linear increase from 0 to 1
+        case "linear":
+          value = start + (end - start) * x; // Linear interpolation
           break;
-        case "linear-decrease":
-          value = 1 - x / (newFactor.timeSeries.length - 1); // Linear decrease from 1 to 0
-          break;
-        case "exponential-increase":
-          value = Math.pow(x / (newFactor.timeSeries.length - 1), 2); // Exponential increase
-          break;
-        case "exponential-decrease":
-          value = Math.pow(1 - x / (newFactor.timeSeries.length - 1), 2); // Exponential decrease
+        case "exponential":
+          value = start + (end - start) * Math.pow(x, 2); // Exponential interpolation
           break;
         default:
           value = 0.5;
       }
+
       // Round to 2 decimal places
       return parseFloat(value.toFixed(2));
     });
+
     setNewFactor((prev) => ({
       ...prev,
       timeSeries: updatedTimeSeries,
@@ -312,29 +322,18 @@ const AddFactorModal = ({ onClose, onAddSuccess }) => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleGraphTypeChange("linear-increase")}
+                  onClick={() => handleGraphTypeChange("linear")}
                 >
-                  Linear Increase
+                  Linear
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleGraphTypeChange("linear-decrease")}
+                  onClick={() => handleGraphTypeChange("exponential")}
                 >
-                  Linear Decrease
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleGraphTypeChange("exponential-increase")}
-                >
-                  Exponential Increase
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleGraphTypeChange("exponential-decrease")}
-                >
-                  Exponential Decrease
+                  Exponential
                 </button>
               </div>
+
               <div className="chart-container">
                 <Line data={chartData} options={chartOptions} />
               </div>
@@ -361,6 +360,55 @@ const AddFactorModal = ({ onClose, onAddSuccess }) => {
           </div>
         </form>
       </div>
+
+      {/* Small Input Modal */}
+      {showInputModal && (
+        <div className="small-modal-overlay">
+          <div className="small-modal-content">
+            <h3>
+              {graphType === "straight"
+                ? "Enter the value for the straight line (0 to 1):"
+                : "Enter the start and end values (0 to 1):"}
+            </h3>
+            {graphType === "straight" ? (
+              <input
+                type="number"
+                value={singleValue}
+                onChange={(e) => setSingleValue(e.target.value)}
+                min="0"
+                max="1"
+                step="0.1"
+                placeholder="e.g., 0.5"
+              />
+            ) : (
+              <div className="input-group">
+                <input
+                  type="number"
+                  value={startValue}
+                  onChange={(e) => setStartValue(e.target.value)}
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  placeholder="Start (e.g., 0.2)"
+                />
+                <input
+                  type="number"
+                  value={endValue}
+                  onChange={(e) => setEndValue(e.target.value)}
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  placeholder="End (e.g., 0.8)"
+                />
+              </div>
+            )}
+            <div className="small-modal-actions">
+              <button onClick={handleInputSubmit}>Submit</button>
+              <button onClick={() => setShowInputModal(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -8,7 +8,7 @@ import { useSearchParams } from "react-router-dom";
 // Styled components
 const Parent = styled.div`
   background-color: #c9d6ff;
-  background: linear-gradient(to right, #d8b4d4, #60396e);
+  background: linear-gradient(to right, #ff9a9e, #fad0c4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -66,12 +66,17 @@ const EyeIcon = styled.span`
 `;
 
 const Button = styled.button`
-  background-color: #60396e;
+  background-color: #e64980; // Lighter pink
   color: #fff;
   font-size: 12px;
-  padding: 10px 30px; /* Adjusted padding for a smaller button */
+  padding: 10px 45px;
+  border: 1px solid transparent;
   border-radius: 8px;
-  font-weight: bold;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-top: 10px;
+  cursor: pointer;
 `;
 
 const ResetPassword = () => {

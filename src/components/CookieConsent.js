@@ -1,31 +1,57 @@
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 
+// const CookieConsentContainer = styled.div`
+//   position: fixed;
+//   bottom: 0;
+//   left: 0;
+//   width: 100%;
+//   background-color: #ea216870;
+//   color: white;
+//   padding: 10px;
+//   text-align: center;
+//   font-size: 14px;
+//   z-index: 999;
+// `;
+
+// const Button = styled.button`
+//   background-color: #ea216870; // Softer pink
+//   color: #fff; // White text
+//   border: none;
+//   padding: 10px 20px;
+//   border-radius: 5px;
+//   cursor: pointer;
+//   margin-right: 10px; // Optional, adds spacing between buttons
+
+//   &:hover {
+//     background-color: #e64980; // Slightly darker pink on hover
+//   }
+// `;
 const CookieConsentContainer = styled.div`
   position: fixed;
   bottom: 0;
   left: 0;
   width: 100%;
-  background-color: #60396e;
+  background-color: #ea216870; // Match the app bar color
   color: white;
-  padding: 10px;
+  padding: 20px;
   text-align: center;
   font-size: 14px;
-  z-index: 999;
+  z-index: 1000;
+  backdrop-filter: blur(5px); // Optional: Adds a blur effect to the background
 `;
 
 const Button = styled.button`
-  background-color: #8b68a1;
+  background-color: #e64980;
   color: #fff;
-  padding: 8px 15px;
   border: none;
+  padding: 10px 20px;
   border-radius: 5px;
   cursor: pointer;
-  margin-left: 10px;
-  font-size: 14px;
+  margin: 0 10px; // Adds spacing between buttons
 
   &:hover {
-    background-color: #734f7f;
+    background-color: #d6336c; // Slightly darker pink on hover
   }
 `;
 
