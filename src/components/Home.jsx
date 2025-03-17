@@ -19,6 +19,9 @@ import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
 import ResizableChartComponent from "./ResizableChartComponent.js";
 import LoadingSpinner from "./LoadingSpinner";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 import {
   Avatar,
@@ -425,12 +428,16 @@ const Home = () => {
     // Update any additional state if needed.
   };
 
-  const handleVisualize = (model, popupState) => {
+  const handleVisualize = (model) => {
     if (model) {
       setSelectedModel(model);
       setShowVisualization(true);
-      popupState.close();
     }
+  };
+
+  const handleVisualizeFromPopup = (model, popupState) => {
+    handleVisualize(model); // Call the original function
+    popupState.close(); // Close the popover
   };
 
   const handleDuplicateGraph = (graphData) => {
@@ -619,8 +626,9 @@ const Home = () => {
             cell.getSourceCell()?.attributes?.attrs?.label?.text || "",
           endFactor: cell.getTargetCell()?.attributes?.attrs?.label?.text || "",
           weight: cell.attributes.weight || 1, // Default weight is 1
-          trainable: cell.attributes.trainable || false, // Default trainable is false
+          trainable: cell.attributes.trainable || true, // Default trainable is true
         });
+        console.log("The trainable value is: ", cell.attributes.trainable);
       } else if (cell.isElement()) {
         // Extract factor details
         const factorName = cell.attributes.attrs.label.text;
@@ -647,8 +655,10 @@ const Home = () => {
   //   }
   // };
   const retrainModel = async (graphData) => {
+    setIsLoading(true);
     try {
       const response = await axios.post(`${apiUrl}/api/retrain`, graphData);
+      console.log("Graph data is : ", graphData);
       const { updated_links, model_quality } = response.data; // Destructure the response
 
       console.log("response.data: ", response.data);
@@ -664,25 +674,28 @@ const Home = () => {
       setModelQuality(model_quality.toFixed(2)); // Round to 2 decimal places
 
       alert("Model retrained successfully!");
+      setIsLoading(false);
     } catch (error) {
       console.error("Error during retraining:", error);
       alert("Failed to retrain the model.");
+      setIsLoading(false);
     }
   };
 
   const handleRetrainClick = () => {
-    setIsLoading(true);
     const graph = graphRef.current.graph; // Assuming `graphRef` holds the JointJS graph instance
 
     const cells = graph.getCells();
     if (cells.length === 0) {
       alert("Cannot train an empty model");
+      setIsLoading(false);
       return;
     }
 
     // Check if a target factor is selected
     if (!selectedTarget) {
       alert("Please select a target factor to train the model");
+      setIsLoading(false);
       return;
     }
 
@@ -695,15 +708,17 @@ const Home = () => {
 
     if (targetLinks.length === 0) {
       alert("There should be at least one link to the target factor");
+      setIsLoading(false);
       return;
     }
+
     const graphData = extractGraphData(graph);
 
     console.log("Extracted Graph Data:", graphData);
 
     // Send data to backend or process further
     retrainModel(graphData);
-    setIsLoading(false);
+    // setIsLoading(false);
   };
 
   // const updateGraphWeights = (graph, updatedWeights) => {
@@ -738,7 +753,7 @@ const Home = () => {
               updatedLink.endFactor
         );
 
-      if (link && link.attributes.trainable) {
+      if (link && link.attributes.trainable !== false) {
         const roundedWeight =
           Math.round(updatedLink.normalized_weight * 100) / 100; // Round to 2 decimal places
         link.set("weight", roundedWeight);
@@ -834,6 +849,7 @@ const Home = () => {
       setLastRectPosition({ x: newX, y: newY });
 
       setAddedFactors([...addedFactors, factor._id]);
+      handleOpenPopover(rect);
     }
   };
 
@@ -1102,14 +1118,41 @@ const Home = () => {
                         marginTop: "16px",
                         width: "300px",
                         padding: "10px",
-                        backgroundColor: "#ecf2ff",
+                        backgroundColor: "#ffffff",
+                        borderRadius: "8px",
+                        boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
                         zIndex: 2,
                       }}
                     >
                       {/* My Models Section */}
-                      <Box>
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          textAlign: "center",
+                          fontWeight: "600",
+                          color: "#333",
+                          marginBottom: "10px",
+                        }}
+                      >
+                        My Models
+                      </Typography>
+
+                      {/* Models List */}
+                      <Box
+                        sx={{
+                          maxHeight: "200px",
+                          overflowY: "auto",
+                          marginBottom: "10px",
+                        }}
+                      >
                         {userModels.length === 0 ? (
-                          <Typography sx={{ color: "black" }}>
+                          <Typography
+                            sx={{
+                              color: "#666",
+                              textAlign: "center",
+                              fontSize: "0.875rem",
+                            }}
+                          >
                             No models found.
                           </Typography>
                         ) : (
@@ -1120,38 +1163,82 @@ const Home = () => {
                                 display: "flex",
                                 justifyContent: "space-between",
                                 alignItems: "center",
-                                marginTop: "10px",
+                                padding: "6px",
+                                marginBottom: "6px",
+                                backgroundColor: "#f5f5f5",
+                                borderRadius: "4px",
+                                "&:hover": {
+                                  backgroundColor: "#e0e0e0",
+                                },
                               }}
                             >
                               <Typography
-                                sx={{ color: "black", fontSize: "0.875rem" }}
+                                sx={{
+                                  color: "#333",
+                                  fontSize: "0.875rem",
+                                  fontWeight: "500",
+                                }}
                               >
                                 {model.name}
                               </Typography>
-                              <Box>
+                              <Box sx={{ display: "flex", gap: "4px" }}>
                                 {/* View Button */}
-                                <CustomButton
+                                <IconButton
+                                  size="small"
                                   onClick={() =>
-                                    handleVisualize(model, popupState)
-                                  }
+                                    handleVisualizeFromPopup(model, popupState)
+                                  } // Use the new function
+                                  sx={{
+                                    width: 24,
+                                    height: 24,
+                                    padding: "4px",
+                                    backgroundColor: "#512da8",
+                                    color: "#fff",
+                                    "&:hover": {
+                                      backgroundColor: "#3e2375",
+                                    },
+                                  }}
                                 >
-                                  View
-                                </CustomButton>
+                                  <VisibilityIcon fontSize="inherit" />
+                                </IconButton>
+
                                 {/* Edit Button */}
-                                <CustomButton
+                                <IconButton
+                                  size="small"
                                   onClick={() =>
                                     handleEditModel(model, popupState)
                                   }
+                                  sx={{
+                                    width: 24,
+                                    height: 24,
+                                    padding: "4px",
+                                    backgroundColor: "#1976d2",
+                                    color: "#fff",
+                                    "&:hover": {
+                                      backgroundColor: "#115293",
+                                    },
+                                  }}
                                 >
-                                  Edit
-                                </CustomButton>
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
 
                                 {/* Delete Button */}
-                                <DeleteButton
+                                <IconButton
+                                  size="small"
                                   onClick={() => handleDeleteModel(model.id)}
+                                  sx={{
+                                    width: 24,
+                                    height: 24,
+                                    padding: "4px",
+                                    backgroundColor: "#d32f2f",
+                                    color: "#fff",
+                                    "&:hover": {
+                                      backgroundColor: "#9a0007",
+                                    },
+                                  }}
                                 >
-                                  Delete
-                                </DeleteButton>
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
                               </Box>
                             </Box>
                           ))
@@ -1159,14 +1246,28 @@ const Home = () => {
                       </Box>
 
                       {/* Logout Button */}
-                      <Box sx={{ marginTop: "10px" }}>
-                        <CustomButton
-                          color="inherit"
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "center",
+                          marginTop: "10px",
+                        }}
+                      >
+                        <Button
+                          variant="contained"
                           onClick={handleLogout}
-                          fullWidth
+                          sx={{
+                            backgroundColor: "#d32f2f",
+                            color: "#fff",
+                            fontSize: "0.875rem",
+                            padding: "6px 12px",
+                            "&:hover": {
+                              backgroundColor: "#9a0007",
+                            },
+                          }}
                         >
                           Logout
-                        </CustomButton>
+                        </Button>
                       </Box>
                     </Paper>
                   </Fade>
@@ -1729,7 +1830,7 @@ const Home = () => {
                           Quality: {model.quality || "Not Applicable"}
                         </Typography>
                         <Typography
-                          onClick={() => handleVisualize(model)}
+                          onClick={() => handleVisualize(model)} // Use the original function
                           sx={{
                             color: "blue",
                             fontSize: "14px",
