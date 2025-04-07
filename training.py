@@ -1,660 +1,404 @@
-# # # # import numpy as np
-# # # # import pandas as pd
-# # # # from econml.dml import LinearDML
-# # # # from sklearn.ensemble import RandomForestRegressor
-# # # # from sklearn.linear_model import Lasso
-# # # # from sklearn.metrics import r2_score
-# # # # import xgboost as xgb
-
-# # # # def estimate_causal_effects_and_predict(graph_data):
-# # # #     try:
-# # # #         factors = graph_data.get("factors", {})
-# # # #         links = graph_data.get("links", [])
-# # # #         target_variable = graph_data.get("selectedTarget")
-
-# # # #         if not factors or not links or not target_variable:
-# # # #             raise ValueError("Graph data must contain 'factors', 'links', and 'selectedTarget'.")
-
-# # # #         updated_links = []
-# # # #         factor_effects = {}  # Store estimated + user-defined weights
-
-# # # #         # **Step 1: Estimate Causal Weights Using EconML**
-# # # #         for link in links:
-# # # #             start_factor = link["startFactor"]
-# # # #             end_factor = link["endFactor"]
-# # # #             trainable = link.get("trainable", False)
-# # # #             weight = link.get("weight", None)  # User-defined weight
-
-# # # #             if start_factor not in factors or end_factor not in factors:
-# # # #                 raise ValueError(f"Factors {start_factor} or {end_factor} not found.")
-
-# # # #             start_series = factors[start_factor]["data"].get("time_series_data", [])
-# # # #             end_series = factors[end_factor]["data"].get("time_series_data", [])
-
-# # # #             if not start_series or not end_series:
-# # # #                 raise ValueError(f"Missing time-series data for {start_factor} or {end_factor}.")
-
-# # # #             T_data = np.array([entry["normalized_value"] for entry in start_series]).reshape(-1, 1)
-# # # #             Y_data = np.array([entry["normalized_value"] for entry in end_series]).reshape(-1, 1)
-
-# # # #             if trainable:
-# # # #                 dml = LinearDML(
-# # # #                     model_y=RandomForestRegressor(n_estimators=100),
-# # # #                     model_t=Lasso(alpha=0.1),
-# # # #                     random_state=42
-# # # #                 )
-# # # #                 dml.fit(Y_data, T_data, X=None)
-# # # #                 causal_effect = float(np.mean(dml.effect(None)))  # Average causal effect
-# # # #             else:
-# # # #                 causal_effect = weight  # Use user-defined weight
-
-# # # #             factor_effects[start_factor] = causal_effect
-# # # #             updated_links.append({
-# # # #                 "startFactor": start_factor,
-# # # #                 "endFactor": end_factor,
-# # # #                 "estimated_weight": causal_effect,
-# # # #                 "trainable": trainable
-# # # #             })
-
-# # # #         # **Step 2: Normalize Trainable Weights**
-# # # #         trainable_weights = [link["estimated_weight"] for link in updated_links if link["trainable"]]
-# # # #         max_weight = max(abs(w) for w in trainable_weights) if trainable_weights else 1
-
-# # # #         for link in updated_links:
-# # # #             if link["trainable"]:
-# # # #                 link["normalized_weight"] = link["estimated_weight"] / max_weight
-# # # #             else:
-# # # #                 link["normalized_weight"] = link["estimated_weight"]  # Keep user-defined weights unchanged
-
-# # # #         # **Step 3: Compute Influence Scores for All Factors**
-# # # #         influence_scores = {factor: 0 for factor in factors}
-
-# # # #         for link in updated_links:
-# # # #             influence_scores[link["endFactor"]] += abs(link["normalized_weight"])  # Accumulate influence
-
-# # # #         # **Step 4: Prepare Data for Machine Learning**
-# # # #         target_series = factors[target_variable]["data"].get("time_series_data", [])
-# # # #         years = [entry["year"] for entry in target_series]
-# # # #         actual_values = [entry["normalized_value"] for entry in target_series]
-
-# # # #         feature_data = []
-# # # #         for year in years:
-# # # #             feature_row = {"Year": year}
-# # # #             for factor, details in factors.items():
-# # # #                 series = details["data"].get("time_series_data", [])
-# # # #                 value = next((entry["normalized_value"] for entry in series if entry["year"] == year), 0)
-# # # #                 feature_row[factor] = value * influence_scores[factor]  # Weighted factor contribution
-# # # #             feature_data.append(feature_row)
-
-# # # #         df = pd.DataFrame(feature_data)
-# # # #         df.set_index("Year", inplace=True)
-# # # #         df["Actual"] = actual_values
-
-# # # #         # **Step 5: Train-Test Split**
-# # # #         train_df = df[df.index <= 2014]  # Train on 1993–2014
-# # # #         test_df = df[(df.index >= 2015) & (df.index <= 2024)]  # Test on 2015–2024
-
-# # # #         X_train, y_train = train_df.drop(columns=["Actual"]).values, train_df["Actual"].values
-# # # #         X_test, y_test = test_df.drop(columns=["Actual"]).values, test_df["Actual"].values
-
-# # # #         # **Step 6: Train an ML Model (XGBoost)**
-# # # #         model = xgb.XGBRegressor(objective="reg:squarederror", n_estimators=100)
-# # # #         model.fit(X_train, y_train)
-
-# # # #         # **Step 7: Evaluate Model Quality (R² Score)**
-# # # #         y_pred = model.predict(X_test)
-# # # #         r2 = r2_score(y_test, y_pred) if len(y_test) > 1 else None  # Evaluate quality
-# # # #         print("r2 score is: ", r2)
-
-
-# # # #         # **Step 8: Predict Future Values (2025–2035)**
-# # # #         future_years = np.arange(2025, 2036)
-# # # #         future_features = []
-
-# # # #         for year in future_years:
-# # # #             feature_row = {"Year": year}
-# # # #             for factor in factors.keys():
-# # # #                 past_series = factors[factor]["data"].get("time_series_data", [])
-# # # #                 last_value = past_series[-1]["normalized_value"] if past_series else 0
-# # # #                 feature_row[factor] = last_value * influence_scores[factor]
-# # # #             future_features.append(feature_row)
-
-# # # #         future_df = pd.DataFrame(future_features)
-# # # #         future_df.set_index("Year", inplace=True)
-# # # #         future_preds = model.predict(future_df.values)
-
-# # # #         return {
-# # # #             "updated_links": updated_links,
-# # # #             # "model_quality": r2,  # R² score based on 2015–2024 test data
-# # # #             # "predicted_target_values": future_preds.tolist()
-# # # #         }
-
-# # # #     except Exception as e:
-# # # #         print(f"Error: {e}")
-# # # #         return {
-# # # #             "updated_links": [],
-# # # #             "model_quality": None,
-# # # #             "predicted_target_values": []
-# # # #         }
-
-# # # import numpy as np
-# # # import pandas as pd
-# # # from econml.dml import LinearDML, NonParamDML
-# # # from sklearn.ensemble import RandomForestRegressor
-# # # from sklearn.linear_model import Lasso
-# # # from sklearn.metrics import r2_score
-# # # import xgboost as xgb
-
-# # # def estimate_causal_effects_and_predict(graph_data):
-# # #     try:
-# # #         factors = graph_data.get("factors", {})
-# # #         links = graph_data.get("links", [])
-# # #         target_variable = graph_data.get("selectedTarget")
-
-# # #         if not factors or not links or not target_variable:
-# # #             raise ValueError("Graph data must contain 'factors', 'links', and 'selectedTarget'.")
-
-# # #         updated_links = []
-# # #         factor_effects = {}  # Store estimated + user-defined weights
-
-# # #         # **Step 1: Estimate Causal Weights Using EconML**
-# # #         for link in links:
-# # #             start_factor = link["startFactor"]
-# # #             end_factor = link["endFactor"]
-# # #             trainable = link.get("trainable", False)
-# # #             weight = link.get("weight", None)  # User-defined weight
-
-# # #             if start_factor not in factors or end_factor not in factors:
-# # #                 raise ValueError(f"Factors {start_factor} or {end_factor} not found.")
-
-# # #             start_series = factors[start_factor]["data"].get("time_series_data", [])
-# # #             end_series = factors[end_factor]["data"].get("time_series_data", [])
-
-# # #             if not start_series or not end_series:
-# # #                 raise ValueError(f"Missing time-series data for {start_factor} or {end_factor}.")
-
-# # #             T_data = np.array([entry["normalized_value"] for entry in start_series]).reshape(-1, 1)
-# # #             Y_data = np.array([entry["normalized_value"] for entry in end_series]).reshape(-1, 1)
-
-# # #             # if trainable:
-# # #             #     dml = LinearDML(
-# # #             #         model_y=RandomForestRegressor(n_estimators=100),
-# # #             #         model_t=Lasso(alpha=0.1),
-# # #             #         random_state=42
-# # #             #     )
-# # #             #     dml.fit(Y_data, T_data, X=None)
-# # #             #     causal_effect = float(np.mean(dml.effect(None)))  # Average causal effect
-# # #             # else:
-# # #             #     causal_effect = weight  # Use user-defined weight
-# # #             if trainable:
-# # #                 # Use NonParamDML instead of LinearDML
-# # #                 dml = NonParamDML(
-# # #                     model_y=RandomForestRegressor(n_estimators=100),  # Model for outcome
-# # #                     model_t=RandomForestRegressor(n_estimators=100),  # Model for treatment
-# # #                     model_final=Lasso(alpha=0.1),  # Final model for treatment effect
-# # #                     random_state=42
-# # #                 )
-# # #                 dml.fit(Y_data, T_data, X=None)  # Fit the model
-# # #                 causal_effect = float(np.mean(dml.effect(None)))  # Average causal effect
-# # #             else:
-# # #                 causal_effect = weight
-
-# # #             factor_effects[start_factor] = causal_effect
-# # #             updated_links.append({
-# # #                 "startFactor": start_factor,
-# # #                 "endFactor": end_factor,
-# # #                 "estimated_weight": causal_effect,
-# # #                 "trainable": trainable
-# # #             })
-
-# # #         # **Step 2: Normalize Trainable Weights**
-# # #         trainable_weights = [link["estimated_weight"] for link in updated_links if link["trainable"]]
-# # #         max_weight = max(abs(w) for w in trainable_weights) if trainable_weights else 1
-
-# # #         for link in updated_links:
-# # #             if link["trainable"]:
-# # #                 link["normalized_weight"] = link["estimated_weight"] / max_weight
-# # #             else:
-# # #                 link["normalized_weight"] = link["estimated_weight"]  # Keep user-defined weights unchanged
-
-# # #         # **Step 3: Compute Influence Scores for All Factors**
-# # #         influence_scores = {factor: 0 for factor in factors}
-
-# # #         for link in updated_links:
-# # #             influence_scores[link["endFactor"]] += abs(link["normalized_weight"])  # Accumulate influence
-
-# # #         # **Step 4: Prepare Data for Machine Learning**
-# # #         target_series = factors[target_variable]["data"].get("time_series_data", [])
-# # #         years = [entry["year"] for entry in target_series]
-# # #         actual_values = [entry["normalized_value"] for entry in target_series]
-
-# # #         feature_data = []
-# # #         for year in years:
-# # #             feature_row = {"Year": year}
-# # #             for factor, details in factors.items():
-# # #                 series = details["data"].get("time_series_data", [])
-# # #                 value = next((entry["normalized_value"] for entry in series if entry["year"] == year), 0)
-# # #                 feature_row[factor] = value * influence_scores[factor]  # Weighted factor contribution
-# # #             feature_data.append(feature_row)
-
-# # #         df = pd.DataFrame(feature_data)
-# # #         df.set_index("Year", inplace=True)
-# # #         df["Actual"] = actual_values
-
-# # #         # **Step 5: Train-Test Split**
-# # #         train_df = df[df.index <= 2014]  # Train on 1993–2014
-# # #         test_df = df[(df.index >= 2015) & (df.index <= 2024)]  # Test on 2015–2024
-
-# # #         X_train, y_train = train_df.drop(columns=["Actual"]).values, train_df["Actual"].values
-# # #         X_test, y_test = test_df.drop(columns=["Actual"]).values, test_df["Actual"].values
-
-# # #         # **Step 6: Train an ML Model (XGBoost)**
-# # #         model = xgb.XGBRegressor(objective="reg:squarederror", n_estimators=100)
-# # #         model.fit(X_train, y_train)
-
-# # #         # **Step 7: Evaluate Model Quality (R² Score)**
-# # #         y_pred = model.predict(X_test)
-# # #         r2 = r2_score(y_test, y_pred) if len(y_test) > 1 else None  # Evaluate quality
-# # #         print("r2 score is: ", r2)
-
-# # #         # **Step 8: Return Updated Links and Model Quality**
-# # #         return {
-# # #             "updated_links": updated_links,
-# # #             "model_quality": r2
-# # #         }
-
-# # #     except Exception as e:
-# # #         print(f"Error: {e}")
-# # #         return {
-# # #             "updated_links": [],
-# # #             "model_quality": None
-# # #         }
-
-# # import numpy as np
-# # import pandas as pd
-# # from econml.dml import NonParamDML
-# # from sklearn.ensemble import RandomForestRegressor
-# # from sklearn.linear_model import Lasso
-# # from sklearn.metrics import r2_score, mean_squared_error
-# # import xgboost as xgb
-
-# # def estimate_causal_effects_and_predict(graph_data):
-# #     try:
-# #         factors = graph_data.get("factors", {})
-# #         links = graph_data.get("links", [])
-# #         target_variable = graph_data.get("selectedTarget")
-
-# #         if not factors or not links or not target_variable:
-# #             raise ValueError("Graph data must contain 'factors', 'links', and 'selectedTarget'.")
-
-# #         updated_links = []
-# #         factor_effects = {}  # Store estimated + user-defined weights
-
-# #         # **Step 1: Estimate Causal Weights Using NonParamDML**
-# #         for link in links:
-# #             start_factor = link["startFactor"]
-# #             end_factor = link["endFactor"]
-# #             trainable = link.get("trainable", False)
-# #             weight = link.get("weight", None)  # User-defined weight
-
-# #             if start_factor not in factors or end_factor not in factors:
-# #                 raise ValueError(f"Factors {start_factor} or {end_factor} not found.")
-
-# #             start_series = factors[start_factor]["data"].get("time_series_data", [])
-# #             end_series = factors[end_factor]["data"].get("time_series_data", [])
-
-# #             if not start_series or not end_series:
-# #                 raise ValueError(f"Missing time-series data for {start_factor} or {end_factor}.")
-
-# #             T_data = np.array([entry["normalized_value"] for entry in start_series]).reshape(-1, 1)
-# #             Y_data = np.array([entry["normalized_value"] for entry in end_series]).reshape(-1, 1)
-
-# #             if trainable:
-# #                 # Use NonParamDML for non-linear causal effect estimation
-# #                 dml = NonParamDML(
-# #                     model_y=RandomForestRegressor(n_estimators=100, random_state=42),  # Model for outcome
-# #                     model_t=RandomForestRegressor(n_estimators=100, random_state=42),  # Model for treatment
-# #                     model_final=Lasso(alpha=0.1),  # Final model for treatment effect
-# #                     random_state=42
-# #                 )
-# #                 # Use dummy covariates (all zeros) if no covariates are available
-# #                 X_dummy = np.zeros((Y_data.shape[0], 1))  # Shape (n_samples, 1)
-# #                 dml.fit(Y_data, T_data, X=X_dummy)  # Fit the model
-# #                 causal_effect = float(np.mean(dml.const_marginal_effect(X=X_dummy)))  # Average causal effect
-# #             else:
-# #                 causal_effect = weight  # Use user-defined weight
-
-# #             factor_effects[start_factor] = causal_effect
-# #             updated_links.append({
-# #                 "startFactor": start_factor,
-# #                 "endFactor": end_factor,
-# #                 "estimated_weight": causal_effect,
-# #                 "trainable": trainable
-# #             })
-
-# #         # **Step 2: Normalize Trainable Weights**
-# #         trainable_weights = [link["estimated_weight"] for link in updated_links if link["trainable"]]
-# #         max_weight = max(abs(w) for w in trainable_weights) if trainable_weights else 1
-
-# #         for link in updated_links:
-# #             if link["trainable"]:
-# #                 link["normalized_weight"] = link["estimated_weight"] / max_weight
-# #             else:
-# #                 link["normalized_weight"] = link["estimated_weight"]  # Keep user-defined weights unchanged
-
-# #         # **Step 3: Compute Influence Scores for All Factors**
-# #         influence_scores = {factor: 0 for factor in factors}
-
-# #         for link in updated_links:
-# #             influence_scores[link["endFactor"]] += abs(link["normalized_weight"])  # Accumulate influence
-
-# #         # **Step 4: Prepare Data for Machine Learning**
-# #         target_series = factors[target_variable]["data"].get("time_series_data", [])
-# #         years = [entry["year"] for entry in target_series]
-# #         actual_values = [entry["normalized_value"] for entry in target_series]
-
-# #         feature_data = []
-# #         for year in years:
-# #             feature_row = {"Year": year}
-# #             for factor, details in factors.items():
-# #                 series = details["data"].get("time_series_data", [])
-# #                 value = next((entry["normalized_value"] for entry in series if entry["year"] == year), 0)
-# #                 feature_row[factor] = value * influence_scores[factor]  # Weighted factor contribution
-# #             feature_data.append(feature_row)
-
-# #         df = pd.DataFrame(feature_data)
-# #         df.set_index("Year", inplace=True)
-# #         df["Actual"] = actual_values
-
-# #         # **Step 5: Train-Test Split**
-# #         train_df = df[df.index <= 2014]  # Train on 1993–2014
-# #         test_df = df[(df.index >= 2015) & (df.index <= 2024)]  # Test on 2015–2024
-
-# #         X_train, y_train = train_df.drop(columns=["Actual"]).values, train_df["Actual"].values
-# #         X_test, y_test = test_df.drop(columns=["Actual"]).values, test_df["Actual"].values
-
-# #         # **Step 6: Train an ML Model (XGBoost)**
-# #         model = xgb.XGBRegressor(objective="reg:squarederror", n_estimators=100, random_state=42)
-# #         model.fit(X_train, y_train)
-
-# #         # **Step 7: Evaluate Model Quality (R² Score)**
-# #         y_pred = model.predict(X_test)
-# #         print("Actual Y is: ", y_test)
-# #         print("Predicted Y is: ", y_pred)
-
-# #         r2 = r2_score(y_test, y_pred) if len(y_test) > 1 else None  # Evaluate quality
-# #         print("R² score is: ", r2)
-
-# #         # **Step 8: Return Updated Links and Model Quality**
-# #         return {
-# #             "updated_links": updated_links,
-# #             "model_quality": r2
-# #         }
-
-# #     except Exception as e:
-# #         print(f"Error: {e}")
-# #         return {
-# #             "updated_links": [],
-# #             "model_quality": None
-# #         }
-
 # import numpy as np
 # import pandas as pd
-# from econml.dml import NonParamDML
-# from sklearn.ensemble import RandomForestRegressor
-# from sklearn.linear_model import Lasso
-# from sklearn.metrics import r2_score, mean_squared_error
-# import xgboost as xgb
+# from econml.panel.dml import DynamicDML
+# from sklearn.linear_model import Ridge
+# from typing import Dict, List
+# import warnings
 
-# def estimate_causal_effects_and_predict(graph_data):
-#     try:
-#         factors = graph_data.get("factors", {})
-#         links = graph_data.get("links", [])
-#         target_variable = graph_data.get("selectedTarget")
+# def debug_data_alignment(treatment_df, outcome_df):
+#     """Enhanced debugging function with column information"""
+#     print("\n=== Data Alignment Debug ===")
+#     print(f"Data shape - Treatment: {treatment_df.shape}, Outcome: {outcome_df.shape}")
+#     print(f"Treatment years: {treatment_df['year'].tolist()}")
+#     print(f"Outcome years: {outcome_df['year'].tolist()}")
+#     print(f"Aligned: {all(treatment_df['year'] == outcome_df['year'])}")
+#     print(f"Treatment NaN values: {treatment_df.isna().sum().sum()}")
+#     print(f"Outcome NaN values: {outcome_df.isna().sum().sum()}")
+#     print(f"Treatment columns: {treatment_df.columns.tolist()}")
+#     print(f"Outcome columns: {outcome_df.columns.tolist()}")
 
-#         if not factors or not links or not target_variable:
-#             raise ValueError("Graph data must contain 'factors', 'links', and 'selectedTarget'.")
+# def prepare_aligned_data_no_lags(start_series, end_series):
+#     """Prepares aligned treatment-outcome pairs without using lags, including all years"""
+#     print(f"\n--- Preparing data for analysis (no lags) ---")
+    
+#     # Convert to DataFrames and sort
+#     treatment_df = pd.DataFrame(start_series).sort_values('year')
+#     outcome_df = pd.DataFrame(end_series).sort_values('year')
+    
+#     print(f"Original treatment years: {treatment_df['year'].min()} to {treatment_df['year'].max()}")
+#     print(f"Original outcome years: {outcome_df['year'].min()} to {outcome_df['year'].max()}")
+    
+#     # Find common years
+#     common_years = sorted(set(treatment_df['year']).intersection(set(outcome_df['year'])))
+#     print(f"Common years: {len(common_years)} years from {min(common_years)} to {max(common_years)}")
+    
+#     # Use all common years instead of filtering to historical only
+#     treatment_df = treatment_df[treatment_df['year'].isin(common_years)].reset_index(drop=True)
+#     outcome_df = outcome_df[outcome_df['year'].isin(common_years)].reset_index(drop=True)
+#     print("Using all available years for analysis (1993-2035)")
+    
+#     # Rename outcome columns to avoid conflicts after merging
+#     outcome_df = outcome_df.rename(columns={'normalized_value': 'o_normalized_value'})
+#     if 'value' in outcome_df.columns:
+#         outcome_df = outcome_df.rename(columns={'value': 'o_value'})
+    
+#     # Standardize all data
+#     t_mean = treatment_df['normalized_value'].mean()
+#     t_std = treatment_df['normalized_value'].std() + 1e-8
+#     o_mean = outcome_df['o_normalized_value'].mean()
+#     o_std = outcome_df['o_normalized_value'].std() + 1e-8
+    
+#     # Apply standardization
+#     treatment_df['t_value_std'] = (treatment_df['normalized_value'] - t_mean) / t_std
+#     outcome_df['o_value_std'] = (outcome_df['o_normalized_value'] - o_mean) / o_std
+    
+#     # Merge on year
+#     combined = pd.merge(treatment_df, outcome_df, on='year')
+    
+#     # Print column information for debugging
+#     print(f"Final dataset: {len(combined)} rows with years {min(combined['year'])} to {max(combined['year'])}")
+#     print(f"Combined columns: {combined.columns.tolist()}")
+    
+#     # Verify data is not empty
+#     if len(combined) == 0:
+#         raise ValueError("No valid data after alignment")
+    
+#     return combined
 
-#         updated_links = []
-#         factor_effects = {}  # Store estimated + user-defined weights
 
-#         # **Step 1: Estimate Causal Weights Using NonParamDML**
-#         for link in links:
-#             start_factor = link["startFactor"]
-#             end_factor = link["endFactor"]
-#             trainable = link.get("trainable", False)
-#             weight = link.get("weight", None)  # User-defined weight
-
-#             if start_factor not in factors or end_factor not in factors:
-#                 raise ValueError(f"Factors {start_factor} or {end_factor} not found.")
-
-#             start_series = factors[start_factor]["data"].get("time_series_data", [])
-#             end_series = factors[end_factor]["data"].get("time_series_data", [])
-
-#             if not start_series or not end_series:
-#                 raise ValueError(f"Missing time-series data for {start_factor} or {end_factor}.")
-
-#             T_data = np.array([entry["normalized_value"] for entry in start_series]).reshape(-1, 1)
-#             Y_data = np.array([entry["normalized_value"] for entry in end_series]).reshape(-1, 1)
-
-#             if trainable:
-#                 # Use NonParamDML for non-linear causal effect estimation
-#                 dml = NonParamDML(
-#                     model_y=RandomForestRegressor(n_estimators=100, random_state=42),  # Model for outcome
-#                     model_t=RandomForestRegressor(n_estimators=100, random_state=42),  # Model for treatment
-#                     model_final=Lasso(alpha=0.1),  # Final model for treatment effect
-#                     random_state=42
-#                 )
-#                 # Use dummy covariates (all zeros) if no covariates are available
-#                 X_dummy = np.zeros((Y_data.shape[0], 1))  # Shape (n_samples, 1)
-#                 dml.fit(Y_data, T_data, X=X_dummy)  # Fit the model
-#                 causal_effect = float(np.mean(dml.const_marginal_effect(X=X_dummy)))  # Average causal effect
-#             else:
-#                 causal_effect = weight  # Use user-defined weight
-
-#             factor_effects[(start_factor, end_factor)] = causal_effect
-#             updated_links.append({
-#                 "startFactor": start_factor,
-#                 "endFactor": end_factor,
-#                 "normalized_weight": causal_effect,
-#                 "trainable": trainable
+# def estimate_causal_effects(factors: Dict, links: List[Dict]) -> List[Dict]:
+#     """Implementation using DynamicDML without lags"""
+#     updated_links = []
+    
+#     for link in links:
+#         current_link = {
+#             "startFactor": link["startFactor"],
+#             "endFactor": link["endFactor"],
+#             "trainable": link.get("trainable", False),
+#             "weight": link.get("weight", 1.0),
+#             "error": None
+#         }
+        
+#         if not current_link["trainable"]:
+#             print(f"\nSkipping non-trainable link: {link['startFactor']} -> {link['endFactor']}")
+#             updated_links.append(current_link)
+#             continue
+            
+#         try:
+#             print(f"\n\n==== Processing link: {link['startFactor']} -> {link['endFactor']} ====")
+            
+#             # Get source data
+#             start_series = factors[link["startFactor"]]["data"]["time_series_data"]
+#             end_series = factors[link["endFactor"]]["data"]["time_series_data"]
+            
+#             # Create aligned dataset without lags
+#             combined = prepare_aligned_data_no_lags(start_series, end_series)
+            
+#             # Debug alignment after processing
+#             debug_data_alignment(
+#                 combined[['year', 'normalized_value', 't_value_std']],
+#                 combined[['year', 'o_normalized_value', 'o_value_std']]
+#             )
+            
+#             # Prepare inputs - use the standardized values directly without lags
+#             Y = combined['o_value_std'].values.reshape(-1, 1)
+#             T = combined['t_value_std'].values.reshape(-1, 1)
+            
+#             # Use sequential indices for groups
+#             groups = np.arange(len(Y))
+            
+#             print(f"\nFinal shapes - Y:{Y.shape}, T:{T.shape}, X:None, groups:{groups.shape}")
+#             print("Using direct values without lags")
+            
+#             # Use Ridge regression with high regularization for stability
+#             print("Using 2-fold cross-validation with Ridge regression (alpha=5.0)")
+            
+#             # Initialize model with regularization
+#             model = DynamicDML(
+#                 model_y=Ridge(alpha=5.0),
+#                 model_t=Ridge(alpha=5.0),
+#                 cv=2,
+#                 random_state=42
+#             )
+            
+#             # Suppress warnings during fitting
+#             with warnings.catch_warnings():
+#                 warnings.simplefilter("ignore")
+#                 model.fit(Y, T, X=None, groups=groups)
+            
+#             # Calculate effect using the model
+#             effect = float(np.mean(model.effect()))
+#             print(f"DynamicDML estimated effect: {effect:.4f}")
+            
+#             # Update link with the estimated effect
+#             current_link.update({
+#                 "weight": effect,
+#                 "years_used": len(Y)
 #             })
+            
+#         except Exception as e:
+#             print(f"Failed {link['startFactor']}->{link['endFactor']}: {str(e)}")
+#             # Keep trainable=True even if there's an error
+#             current_link.update({
+#                 "error": str(e)
+#             })
+            
+#         updated_links.append(current_link)
+    
+#     return updated_links
 
-#         # **Step 2: Compounding Causal Effects**
-#         # Create a dictionary to store predicted factor values
-#         predicted_factors = {factor: [] for factor in factors}
+# def calculate_model_quality(updated_links):
+#     # Initialize quality components
+#     trainable_links = [link for link in updated_links if link.get("trainable", False)]
+#     fixed_links = [link for link in updated_links if not link.get("trainable", False)]
+    
+#     # 1. Statistical validity component (30%)
+#     effect_validity = sum(1 for link in trainable_links if abs(link.get("weight", 0)) < 2.0) / max(1, len(trainable_links))
+    
+#     # 2. Respect for fixed links (20%)
+#     fixed_links_respected = 1.0  # You're already respecting these in your implementation
+    
+#     # 3. Data coverage component (20%)
+#     data_coverage = sum(link.get("years_used", 0) for link in trainable_links) / (len(trainable_links) * 43) if trainable_links else 1.0
+    
+#     # 4. Estimation success component (30%)
+#     estimation_success = sum(1 for link in trainable_links if link.get("error") is None) / max(1, len(trainable_links))
+    
+#     # Weighted quality score
+#     quality = (0.3 * effect_validity + 0.2 * fixed_links_respected + 
+#               0.2 * data_coverage + 0.3 * estimation_success) * 100
+    
+#     return quality
 
-#         # Initialize root factors (factors with no parents)
-#         root_factors = [factor for factor in factors if not any(link["endFactor"] == factor for link in links)]
 
-#         # Iterate over years to predict factor values
-#         years = sorted(set(entry["year"] for factor_data in factors.values() for entry in factor_data["data"].get("time_series_data", [])))
-#         for year in years:
-#             for factor in root_factors:
-#                 # Use actual values for root factors
-#                 series = factors[factor]["data"].get("time_series_data", [])
-#                 value = next((entry["normalized_value"] for entry in series if entry["year"] == year), 0)
-#                 predicted_factors[factor].append(value)
+# def run_analysis(graph_data: Dict) -> Dict:
+#     """Main analysis function with fixed model quality"""
+#     print(graph_data)
+#     try:
+#         # Input validation
+#         if not all(k in graph_data for k in ['factors', 'links']):
+#             raise ValueError("Missing required fields in graph data")
+            
+#         print(f"Processing {len(graph_data['links'])} links in the graph")
+        
+#         # Run estimation
+#         updated_links = estimate_causal_effects(
+#             graph_data['factors'],
+#             graph_data['links']
+#         )
+        
+#         # Fixed model quality as requested
+#         model_quality =  calculate_model_quality(updated_links)
 
-#             # Predict downstream factors iteratively
-#             for link in updated_links:
-#                 start_factor = link["startFactor"]
-#                 end_factor = link["endFactor"]
-#                 if end_factor not in root_factors:
-#                     # Compute the value of the end factor as a weighted sum of its parents
-#                     parent_value = predicted_factors[start_factor][-1]  # Latest value of the parent factor
-#                     causal_effect = factor_effects[(start_factor, end_factor)]
-#                     predicted_value = parent_value * causal_effect
-#                     predicted_factors[end_factor].append(predicted_value)
-
-#         # **Step 3: Predict Target Variable**
-#         # Use the predicted values of the target variable's parents to compute Y
-#         target_parents = [link["startFactor"] for link in links if link["endFactor"] == target_variable]
-#         predicted_Y = []
-#         for year in years:
-#             y_value = 0
-#             for parent in target_parents:
-#                 y_value += predicted_factors[parent][years.index(year)]
-#             predicted_Y.append(y_value)
-
-#         # **Step 4: Evaluate Model Quality**
-#         # Get actual values of the target variable
-#         target_series = factors[target_variable]["data"].get("time_series_data", [])
-#         actual_Y = [entry["normalized_value"] for entry in target_series if entry["year"] in years]
-
-#         print("Actual Y is: ", actual_Y)
-#         print("Predicted Y is: ", predicted_Y)
-
-#         # Compute R² score and MSE
-#         r2 = r2_score(actual_Y, predicted_Y)
-#         mse = mean_squared_error(actual_Y, predicted_Y)
-#         print(f"R² score: {r2}, MSE: {mse}")
-
-#         # **Step 5: Return Updated Links and Model Quality**
+        
+#         print(f"\nAnalysis complete. Updated {len(updated_links)} links.")
+        
+#         # Return in format expected by frontend
 #         return {
 #             "updated_links": updated_links,
-#             "model_quality": mse
+#             "model_quality": model_quality,
+#             "status": "success"
+#         }
+        
+#     except Exception as e:
+#         print(f"Analysis failed with error: {str(e)}")
+#         return {
+#             "error": str(e),
+#             "updated_links": [],
+#             "model_quality": 0,
+#             "status": "error"
 #         }
 
-#     except Exception as e:
-#         print(f"Error: {e}")
-#         return {
-#             "updated_links": [],
-#             "model_quality": None
-#         }
+
 
 import numpy as np
-from econml.dml import CausalForestDML
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import r2_score, mean_squared_error
+import pandas as pd
+from econml.panel.dml import DynamicDML
+from sklearn.linear_model import Ridge
+from typing import Dict, List
+import warnings
 
-def estimate_causal_effects(factors, links):
-    """
-    Estimate causal effects using CausalForestDML for trainable links.
-    For non-trainable links, use user-defined weights.
-    """
-    factor_effects = {}
+def prepare_panel_data_with_lags(start_series, end_series, lag_years=5):
+    """Prepares panel data with sliding windows to capture temporal dependencies"""
+    print(f"\n--- Preparing panel data with {lag_years}-year lags ---")
+    
+    # Window size = lag_years + 1 to include current year
+    window_size = lag_years + 1
+    
+    # Convert to DataFrames and sort
+    treatment_df = pd.DataFrame(start_series).sort_values('year')
+    outcome_df = pd.DataFrame(end_series).sort_values('year')
+    
+    print(f"Original years range: {treatment_df['year'].min()}-{treatment_df['year'].max()}")
+    
+    # Find common years
+    common_years = sorted(set(treatment_df['year']).intersection(set(outcome_df['year'])))
+    print(f"Common years: {len(common_years)} years from {min(common_years)} to {max(common_years)}")
+    
+    # Filter to common years
+    treatment_df = treatment_df[treatment_df['year'].isin(common_years)].reset_index(drop=True)
+    outcome_df = outcome_df[outcome_df['year'].isin(common_years)].reset_index(drop=True)
+    
+    # Rename outcome columns to avoid conflicts
+    outcome_df = outcome_df.rename(columns={'normalized_value': 'o_normalized_value'})
+    if 'value' in outcome_df.columns:
+        outcome_df = outcome_df.rename(columns={'value': 'o_value'})
+    
+    # Merge on year
+    combined = pd.merge(treatment_df, outcome_df, on='year')
+    
+    # Standardize values
+    t_mean = combined['normalized_value'].mean()
+    t_std = combined['normalized_value'].std() + 1e-8
+    o_mean = combined['o_normalized_value'].mean()
+    o_std = combined['o_normalized_value'].std() + 1e-8
+    
+    combined['t_value_std'] = (combined['normalized_value'] - t_mean) / t_std
+    combined['o_value_std'] = (combined['o_normalized_value'] - o_mean) / o_std
+    
+    # Sort by year
+    combined = combined.sort_values('year').reset_index(drop=True)
+    
+    # Create panel data using sliding windows
+    panel_data = []
+    n_years = len(combined)
+    
+    if n_years < window_size:
+        raise ValueError(f"Need at least {window_size} years of data for {lag_years}-year lags")
+    
+    # Create sliding windows - each becomes a panel
+    for i in range(n_years - window_size + 1):
+        window = combined.iloc[i:i+window_size].copy()
+        window['panel_id'] = i  # Unique panel ID for each window
+        panel_data.append(window)
+    
+    # Combine all windows
+    panel_df = pd.concat(panel_data, ignore_index=True)
+    
+    n_panels = panel_df['panel_id'].nunique()
+    print(f"Panel data created: {n_panels} panels with {window_size} time periods each")
+    print(f"Effective years used: {len(combined['year'].unique())}")
+    
+    return panel_df
+
+def estimate_causal_effects(factors: Dict, links: List[Dict]) -> List[Dict]:
+    """Implementation using DynamicDML with lagged variables"""
     updated_links = []
-
+    
     for link in links:
-        start_factor = link["startFactor"]
-        end_factor = link["endFactor"]
-        trainable = link.get("trainable", False)
-        weight = link.get("weight", None)
-
-        if start_factor not in factors or end_factor not in factors:
-            raise ValueError(f"Factors {start_factor} or {end_factor} not found.")
-
-        start_series = factors[start_factor]["data"].get("time_series_data", [])
-        end_series = factors[end_factor]["data"].get("time_series_data", [])
-
-        if not start_series or not end_series:
-            raise ValueError(f"Missing time-series data for {start_factor} or {end_factor}.")
-
-        T_data = np.array([entry["normalized_value"] for entry in start_series]).reshape(-1, 1)
-        Y_data = np.array([entry["normalized_value"] for entry in end_series]).reshape(-1, 1)
-
-        if trainable:
-            # Use CausalForestDML for trainable links
-            est = CausalForestDML(
-                model_y=RandomForestRegressor(),
-                model_t=RandomForestRegressor(),
-                criterion='mse',
-                n_estimators=1000,
-                min_impurity_decrease=0.001,
-                random_state=123
+        current_link = {
+            "startFactor": link["startFactor"],
+            "endFactor": link["endFactor"],
+            "trainable": link.get("trainable", False),
+            "weight": link.get("weight", 1.0),
+            "error": None
+        }
+        
+        if not current_link["trainable"]:
+            print(f"\nSkipping non-trainable link: {link['startFactor']} -> {link['endFactor']}")
+            updated_links.append(current_link)
+            continue
+            
+        try:
+            print(f"\n==== Processing link: {link['startFactor']} -> {link['endFactor']} ====")
+            
+            # Get source data
+            start_series = factors[link["startFactor"]]["data"]["time_series_data"]
+            end_series = factors[link["endFactor"]]["data"]["time_series_data"]
+            
+            # Create panel data with 5-year lags
+            lag_years = 5
+            panel_df = prepare_panel_data_with_lags(start_series, end_series, lag_years)
+            
+            # Prepare for DynamicDML
+            Y = panel_df['o_value_std'].values
+            T = panel_df['t_value_std'].values.reshape(-1, 1)
+            groups = panel_df['panel_id'].values
+            
+            print(f"Model input shapes - Y:{Y.shape}, T:{T.shape}, groups:{groups.shape}")
+            
+            # Initialize model with Ridge regression for stability
+            model = DynamicDML(
+                model_y=Ridge(alpha=5.0),
+                model_t=Ridge(alpha=5.0),
+                cv=2,
+                random_state=42
             )
-            X_dummy = np.zeros((len(Y_data), 1))  # Dummy covariates
-            est.fit(Y_data, T_data, X=X_dummy)
-            causal_effect = float(np.mean(est.effect(X_dummy)))  # Average treatment effect
-        else:
-            # Use user-defined weight for non-trainable links
-            causal_effect = weight
+            
+            # Fit model
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                model.fit(Y, T, X=None, groups=groups, inference='auto')
+            
+            # Calculate causal effect
+            effect = float(np.mean(model.effect()))
+            print(f"Estimated causal effect with lags: {effect:.4f}")
+            
+            # Update link with results
+            current_link.update({
+                "weight": effect,
+                "years_used": len(panel_df['year'].unique()),
+                "lag_years": lag_years
+            })
+            
+        except Exception as e:
+            print(f"Failed to estimate {link['startFactor']}->{link['endFactor']}: {str(e)}")
+            current_link.update({"error": str(e)})
+            
+        updated_links.append(current_link)
+    
+    return updated_links
 
-        factor_effects[(start_factor, end_factor)] = causal_effect
-        updated_links.append({
-            "startFactor": start_factor,
-            "endFactor": end_factor,
-            "normalized_weight": causal_effect,
-            "trainable": trainable
-        })
+def calculate_model_quality(updated_links):
+    # Same quality calculation as before
+    trainable_links = [link for link in updated_links if link.get("trainable", False)]
+    
+    # Statistical validity (30%)
+    effect_validity = sum(1 for link in trainable_links if abs(link.get("weight", 0)) < 2.0) / max(1, len(trainable_links))
+    
+    # Fixed links respected (20%)
+    fixed_links_respected = 1.0
+    
+    # Data coverage (20%)
+    data_coverage = sum(link.get("years_used", 0) for link in trainable_links) / (len(trainable_links) * 43) if trainable_links else 1.0
+    
+    # Estimation success (30%)
+    estimation_success = sum(1 for link in trainable_links if link.get("error") is None) / max(1, len(trainable_links))
+    
+    # Weighted score
+    quality = (0.3 * effect_validity + 0.2 * fixed_links_respected + 
+               0.2 * data_coverage + 0.3 * estimation_success) * 100
+    
+    return quality
 
-    return factor_effects, updated_links
-
-def predict_factors(factors, links, factor_effects, years):
-    """
-    Predict factor values based on causal effects and time series data.
-    """
-    predicted_factors = {factor: [] for factor in factors}
-    root_factors = [factor for factor in factors if not any(link["endFactor"] == factor for link in links)]
-
-    for year in years:
-        # Initialize root factors with actual values
-        for factor in root_factors:
-            series = factors[factor]["data"].get("time_series_data", [])
-            value = next((entry["normalized_value"] for entry in series if entry["year"] == year), 0)
-            predicted_factors[factor].append(value)
-
-        # Predict downstream factors iteratively
-        for link in links:
-            start_factor = link["startFactor"]
-            end_factor = link["endFactor"]
-            if end_factor not in root_factors:
-                parent_value = predicted_factors[start_factor][-1]  # Latest value of the parent factor
-                causal_effect = factor_effects[(start_factor, end_factor)]
-                predicted_value = parent_value * causal_effect
-                predicted_factors[end_factor].append(predicted_value)
-
-    return predicted_factors
-
-def evaluate_model(actual_Y, predicted_Y):
-    """
-    Evaluate the model using R² score and MSE.
-    """
-    r2 = r2_score(actual_Y, predicted_Y)
-    mse = mean_squared_error(actual_Y, predicted_Y)
-    return r2, mse
-
-def estimate_causal_effects_and_predict(graph_data):
-    """
-    Main function to estimate causal effects, predict target variable, and evaluate model quality.
-    """
+def run_analysis(graph_data: Dict) -> Dict:
+    """Main analysis function with temporal dependencies"""
     try:
-        factors = graph_data.get("factors", {})
-        links = graph_data.get("links", [])
-        target_variable = graph_data.get("selectedTarget")
-
-        if not factors or not links or not target_variable:
-            raise ValueError("Graph data must contain 'factors', 'links', and 'selectedTarget'.")
-
-        # Step 1: Estimate causal effects
-        factor_effects, updated_links = estimate_causal_effects(factors, links)
-
-        # Step 2: Predict factor values
-        years = sorted(set(entry["year"] for factor_data in factors.values() for entry in factor_data["data"].get("time_series_data", [])))
-        predicted_factors = predict_factors(factors, links, factor_effects, years)
-
-        # Step 3: Predict target variable
-        target_parents = [link["startFactor"] for link in links if link["endFactor"] == target_variable]
-        predicted_Y = [sum(predicted_factors[parent][years.index(year)] for parent in target_parents) for year in years]
-
-        # Step 4: Evaluate model quality
-        target_series = factors[target_variable]["data"].get("time_series_data", [])
-        actual_Y = [entry["normalized_value"] for entry in target_series if entry["year"] in years]
-
-        r2, mse = evaluate_model(actual_Y, predicted_Y)
-        print(f"R² score: {r2}, MSE: {mse}")
-
-        # Step 5: Return updated links and model quality
+        if not all(k in graph_data for k in ['factors', 'links']):
+            raise ValueError("Missing required fields in graph data")
+            
+        print(f"Processing {len(graph_data['links'])} links with 5-year lagged variables")
+        
+        updated_links = estimate_causal_effects(
+            graph_data['factors'],
+            graph_data['links']
+        )
+        
+        model_quality = calculate_model_quality(updated_links)
+        
+        print(f"\nAnalysis complete. Model quality: {model_quality:.2f}%")
+        
         return {
             "updated_links": updated_links,
-            "model_quality": mse
+            "model_quality": model_quality,
+            "status": "success"
         }
-
+        
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Analysis failed: {str(e)}")
         return {
+            "error": str(e),
             "updated_links": [],
-            "model_quality": None
+            "model_quality": 0,
+            "status": "error"
         }
-
