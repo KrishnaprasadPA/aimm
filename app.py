@@ -1,6 +1,6 @@
 import json
 
-from training import estimate_causal_effects_and_predict
+from training import run_analysis
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
@@ -362,9 +362,7 @@ def retrain_model():
         # Get the graph data from the request
         graph_data = request.get_json()
 
-        # Call the LSTM training function with the received graph data
-        # updated_weights = train_lstm_with_target(graph_data, graph_data.get('selectedTarget'))
-        updated_weights = estimate_causal_effects_and_predict(graph_data)
+        updated_weights = run_analysis(graph_data)
         print("Updated weights are: ", updated_weights)
 
         # Return the updated weights to the frontend

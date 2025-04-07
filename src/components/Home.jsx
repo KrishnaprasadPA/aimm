@@ -323,18 +323,146 @@ const Home = () => {
       },
     });
 
-    // Enable element deletion on right-click
+    // paper.on("element:contextmenu", (elementView, evt) => {
+    //   evt.preventDefault();
+
+    //   const menu = document.createElement("div");
+    //   menu.style.position = "absolute";
+    //   menu.style.left = `${evt.clientX}px`;
+    //   menu.style.top = `${evt.clientY}px`;
+    //   menu.style.background = "white";
+    //   menu.style.border = "1px solid #ccc";
+    //   menu.style.borderRadius = "4px";
+    //   menu.style.padding = "4px";
+    //   menu.style.zIndex = 10000;
+    //   menu.innerHTML = `
+    //     <div id="context-edit" style="padding: 4px; cursor: pointer;">Edit</div>
+    //     <div id="context-delete" style="padding: 4px; cursor: pointer;">Delete</div>
+    //   `;
+
+    //   document.body.appendChild(menu);
+
+    //   const removeMenu = () => {
+    //     if (menu.parentNode) {
+    //       menu.parentNode.removeChild(menu);
+    //     }
+    //     document.removeEventListener("click", removeMenu);
+    //   };
+
+    //   document.getElementById("context-edit").onclick = () => {
+    //     handleOpenPopover(elementView.model); // Open time series chart
+    //     removeMenu();
+    //   };
+
+    //   document.getElementById("context-delete").onclick = () => {
+    //     const factorId = elementView.model.attributes.factor._id;
+    //     setAddedFactors((prev) => prev.filter((id) => id !== factorId));
+    //     elementView.model.remove();
+    //     removeMenu();
+    //   };
+
+    //   setTimeout(() => {
+    //     document.addEventListener("click", removeMenu);
+    //   }, 0);
+    // });
+
     paper.on("element:contextmenu", (elementView, evt) => {
       evt.preventDefault();
-      const factorId = elementView.model.attributes.factor._id;
-      setAddedFactors(addedFactors.filter((id) => id !== factorId));
-      elementView.model.remove();
+
+      // Remove any existing context menu
+      const oldMenu = document.getElementById("custom-context-menu");
+      if (oldMenu) oldMenu.remove();
+
+      const menu = document.createElement("div");
+      menu.id = "custom-context-menu";
+      menu.style.position = "absolute";
+      menu.style.left = `${evt.clientX}px`;
+      menu.style.top = `${evt.clientY}px`;
+      menu.style.background = "#ffffff";
+      menu.style.border = "1px solid #ccc";
+      menu.style.borderRadius = "8px";
+      menu.style.padding = "6px 0";
+      menu.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+      menu.style.zIndex = 10000;
+      menu.style.fontFamily = "Nunito Sans, sans-serif";
+      menu.style.minWidth = "120px";
+      menu.innerHTML = `
+        <div id="context-edit" style="
+          padding: 8px 16px;
+          cursor: pointer;
+          transition: background 0.2s;
+        ">✏️ Edit</div>
+        <div id="context-delete" style="
+          padding: 8px 16px;
+          cursor: pointer;
+          transition: background 0.2s;
+          color: #d32f2f;
+        ">🗑️ Delete</div>
+      `;
+
+      // Hover effects
+      menu.querySelectorAll("div").forEach((item) => {
+        item.addEventListener("mouseenter", () => {
+          item.style.background = "#f4f4f4";
+        });
+        item.addEventListener("mouseleave", () => {
+          item.style.background = "transparent";
+        });
+      });
+
+      document.body.appendChild(menu);
+
+      const removeMenu = () => {
+        const el = document.getElementById("custom-context-menu");
+        if (el) el.remove();
+        document.removeEventListener("click", removeMenu);
+      };
+
+      document.getElementById("context-edit").onclick = () => {
+        handleOpenPopover(elementView.model);
+        removeMenu();
+      };
+
+      document.getElementById("context-delete").onclick = () => {
+        const factorId = elementView.model.attributes.factor._id;
+        setAddedFactors((prev) => prev.filter((id) => id !== factorId));
+        elementView.model.remove();
+        removeMenu();
+      };
+
+      setTimeout(() => {
+        document.addEventListener("click", removeMenu);
+      }, 0);
     });
 
+    // Enable element deletion on right-click
+    // paper.on("element:contextmenu", (elementView, evt) => {
+    //   evt.preventDefault();
+    //   const factorId = elementView.model.attributes.factor._id;
+    //   setAddedFactors(addedFactors.filter((id) => id !== factorId));
+    //   elementView.model.remove();
+    // });
+
     // // Enable link deletion on right-click
-    paper.on("link:contextmenu", (linkView, evt) => {
+    // paper.on("link:contextmenu", (linkView, evt) => {
+    //   evt.preventDefault();
+    //   linkView.model.remove();
+    // });
+    // Handle delete button click
+    paper.on("cell:pointerclick", function (cellView, evt, x, y) {
+      if (!cellView.model.isElement()) return;
+
+      const target = evt.target;
+      if (target && target.getAttribute("selector") === "deleteButton") {
+        evt.stopPropagation();
+        const factorId = cellView.model.attributes.factor._id;
+        setAddedFactors((prev) => prev.filter((id) => id !== factorId));
+        cellView.model.remove();
+      }
+    });
+
+    paper.$el.on("contextmenu", function (evt) {
       evt.preventDefault();
-      linkView.model.remove();
     });
 
     paper.on("link:mouseenter", (linkView) => {
@@ -345,15 +473,15 @@ const Home = () => {
       linkView.removeTools();
     });
 
-    paper.on("cell:pointerclick", (cellView) => {
-      const element = cellView.model;
+    // paper.on("cell:pointerclick", (cellView) => {
+    //   const element = cellView.model;
 
-      if (element.isElement()) {
-        const factor = element.get("factor"); // Assuming time series data is stored in model attributes
-        handleOpenPopover(element);
-        // paper.$el.css("cursor", "pointer");
-      }
-    });
+    //   if (element.isElement()) {
+    //     const factor = element.get("factor"); // Assuming time series data is stored in model attributes
+    //     handleOpenPopover(element);
+    //     // paper.$el.css("cursor", "pointer");
+    //   }
+    // });
     if (duplicatedGraphData) {
       try {
         // Load duplicated graph data into JointJS
@@ -754,8 +882,7 @@ const Home = () => {
         );
 
       if (link && link.attributes.trainable !== false) {
-        const roundedWeight =
-          Math.round(updatedLink.normalized_weight * 100) / 100; // Round to 2 decimal places
+        const roundedWeight = Math.round(updatedLink.weight * 100) / 100; // Round to 2 decimal places
         link.set("weight", roundedWeight);
 
         // Update link appearance
@@ -773,6 +900,118 @@ const Home = () => {
     });
   };
 
+  // const addRectangleToGraph = (factor) => {
+  //   if (addedFactors.includes(factor._id)) {
+  //     alert(`${factor.name} is already added to the canvas.`);
+  //     return;
+  //   }
+
+  //   const portsOut = {
+  //     position: {
+  //       name: "right",
+  //     },
+  //     attrs: {
+  //       label: { text: "out" },
+  //       portBody: {
+  //         magnet: true,
+  //         r: 4,
+  //         fill: "black",
+  //         stroke: "white",
+  //       },
+  //     },
+  //     markup: [
+  //       {
+  //         tagName: "circle",
+  //         selector: "portBody",
+  //       },
+  //     ],
+  //   };
+
+  //   let rectColor = factor.color || "#8e7fa2"; // Default purple color
+
+  //   // Check if factorName is in targetVariables and change color accordingly
+  //   if (targetVariables.includes(factor)) {
+  //     rectColor = "#80396e";
+  //   }
+
+  //   if (graphRef.current && graphRef.current.graph) {
+  //     const newX = lastRectPosition.x + 10;
+  //     const newY = lastRectPosition.y + 10;
+  //     const rect = new joint.shapes.standard.Rectangle({
+  //       ports: {
+  //         groups: {
+  //           out: portsOut,
+  //         },
+  //       },
+  //       factor: factor,
+  //       markup: [
+  //         { tagName: "rect", selector: "body" },
+  //         { tagName: "text", selector: "label" },
+  //       ],
+  //     });
+  //     rect.position(newX, newY); // Adjust position as needed
+  //     rect.resize(120, 40);
+  //     rect.attr({
+  //       body: {
+  //         fill: rectColor, // Purple color
+  //         // borderRadius: "3px",
+  //         stroke: "#121212",
+  //         strokeWidth: 1,
+  //       },
+  //       label: {
+  //         text: factor.name,
+  //         fill: "white",
+  //         fontSize: 10, // Smaller font size
+  //       },
+  //       deleteButton: {
+  //         refX: "100%", // Position at right edge
+  //         refX2: -12, // 12px from right edge
+  //         y: 0, // Top edge
+  //         width: 12, // Small square
+  //         height: 12,
+  //         fill: "#ff4d4d", // Red background
+  //         cursor: "pointer",
+  //         rx: 2, // Slightly rounded corners
+  //         ry: 2,
+  //       },
+  //       deleteIcon: {
+  //         refX: "100%", // Same positioning as button
+  //         refX2: -6, // Center horizontally
+  //         y: 9, // Center vertically
+  //         text: "×", // Cross symbol
+  //         fill: "white",
+  //         "font-size": 10,
+  //         "font-weight": "bold",
+  //         "pointer-events": "none",
+  //       },
+  //     });
+
+  //     rect.addPorts([
+  //       {
+  //         group: "out",
+  //       },
+  //     ]);
+
+  //     rect.on("change:attrs", function () {
+  //       const view = this.findView(graphRef.current.paper);
+  //       const deleteButton = view?.findBySelector("deleteButton")[0];
+  //       deleteButton?.addEventListener("click", (evt) => {
+  //         evt.stopPropagation();
+  //         const factorId = this.attributes.factor._id;
+  //         setAddedFactors(addedFactors.filter((id) => id !== factorId));
+  //         this.remove();
+  //       });
+  //     });
+
+  //     // rect.on("element:pointerclick", () => handleOpenPopover(factor));
+  //     graphRef.current.graph.addCells(rect);
+  //     console.log("Graph is: ", JSON.stringify(graphRef.current.graph));
+  //     setLastRectPosition({ x: newX, y: newY });
+
+  //     setAddedFactors([...addedFactors, factor._id]);
+  //     handleOpenPopover(rect);
+  //   }
+  // };
   const addRectangleToGraph = (factor) => {
     if (addedFactors.includes(factor._id)) {
       alert(`${factor.name} is already added to the canvas.`);
@@ -810,6 +1049,7 @@ const Home = () => {
     if (graphRef.current && graphRef.current.graph) {
       const newX = lastRectPosition.x + 10;
       const newY = lastRectPosition.y + 10;
+
       const rect = new joint.shapes.standard.Rectangle({
         ports: {
           groups: {
@@ -818,36 +1058,112 @@ const Home = () => {
         },
         factor: factor,
         markup: [
-          { tagName: "rect", selector: "body" },
-          { tagName: "text", selector: "label" },
+          {
+            tagName: "rect",
+            selector: "body",
+          },
+          {
+            tagName: "text",
+            selector: "label",
+          },
+          {
+            tagName: "rect",
+            selector: "deleteButton",
+            attributes: {
+              "pointer-events": "visiblePainted",
+            },
+          },
+          {
+            tagName: "text",
+            selector: "deleteIcon",
+            attributes: {
+              "pointer-events": "none",
+            },
+          },
         ],
       });
-      rect.position(newX, newY); // Adjust position as needed
+
+      rect.position(newX, newY);
       rect.resize(120, 40);
       rect.attr({
         body: {
-          fill: rectColor, // Purple color
-          // borderRadius: "3px",
+          fill: rectColor,
           stroke: "#121212",
           strokeWidth: 1,
+          rx: 3,
+          ry: 3,
         },
         label: {
           text: factor.name,
           fill: "white",
-          fontSize: 10, // Smaller font size
+          fontSize: 10,
+          refX: "50%",
+          refY: "50%",
+          textAnchor: "middle",
+          yAlignment: "middle",
+        },
+        deleteButton: {
+          refX: "100%",
+          refX2: 0, // Position from right edge
+          refY: 5, // Position from top
+          width: 15,
+          height: 15,
+          fill: "#ff4d4d",
+          stroke: "#ffffff",
+          strokeWidth: 1,
+          cursor: "pointer",
+          rx: 2,
+          ry: 2,
+          opacity: 0, // Start hidden (we'll animate this)
+        },
+        deleteIcon: {
+          refX: "100%",
+          refX2: -12.5, // Centered in button
+          refY: 12.5, // Centered vertically
+          text: "×",
+          fill: "white",
+          "font-size": 12,
+          "font-weight": "bold",
+          "pointer-events": "none",
+          opacity: 0, // Start hidden
         },
       });
 
-      rect.addPorts([
-        {
-          group: "out",
-        },
-      ]);
-      // rect.on("element:pointerclick", () => handleOpenPopover(factor));
-      graphRef.current.graph.addCells(rect);
-      console.log("Graph is: ", JSON.stringify(graphRef.current.graph));
-      setLastRectPosition({ x: newX, y: newY });
+      rect.addPorts([{ group: "out" }]);
 
+      // Add hover effects
+      rect.on("mouseenter", function () {
+        this.attr({
+          deleteButton: { visibility: "visible" },
+          deleteIcon: { visibility: "visible" },
+        });
+      });
+
+      rect.on("mouseleave", function () {
+        this.attr({
+          deleteButton: { visibility: "hidden" },
+          deleteIcon: { visibility: "hidden" },
+        });
+      });
+
+      // Handle delete button click
+      rect.on("change:attrs", function () {
+        const view = this.findView(graphRef.current.paper);
+        if (view) {
+          const deleteButton = view.findBySelector("deleteButton")[0];
+          if (deleteButton) {
+            deleteButton.addEventListener("click", (evt) => {
+              evt.stopPropagation();
+              const factorId = this.attributes.factor._id;
+              setAddedFactors(addedFactors.filter((id) => id !== factorId));
+              this.remove();
+            });
+          }
+        }
+      });
+
+      graphRef.current.graph.addCells(rect);
+      setLastRectPosition({ x: newX, y: newY });
       setAddedFactors([...addedFactors, factor._id]);
       handleOpenPopover(rect);
     }
@@ -900,13 +1216,44 @@ const Home = () => {
       },
     });
 
+    const removeButton = new joint.linkTools.Button({
+      markup: [
+        {
+          tagName: "circle",
+          selector: "button",
+          attributes: {
+            r: 7,
+            fill: "#ff4d4d", // Red circle
+            stroke: "white", // White border
+            "stroke-width": 1,
+            cursor: "pointer",
+          },
+        },
+        {
+          tagName: "path",
+          selector: "icon",
+          attributes: {
+            d: "M -3 -3 3 3 M -3 3 3 -3", // X shape
+            fill: "none",
+            stroke: "white", // White cross
+            "stroke-width": 1.5,
+            "pointer-events": "none",
+          },
+        },
+      ],
+      distance: 40,
+      action: function () {
+        linkView.model.remove();
+      },
+    });
+
     //const infoButton = new joint.linkTools.InfoButton();
 
     // const removeButton = new joint.linkTools.Remove();
     //var sourceAnchorTool = new joint.linkTools.SourceAnchor();
 
     const tools = new joint.dia.ToolsView({
-      tools: [infoButton],
+      tools: [infoButton, removeButton],
     });
 
     linkView.addTools(tools);
