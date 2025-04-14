@@ -1,6 +1,6 @@
 import json
 
-from training import run_analysis
+from causal_estimation_module_with_confounders import run_analysis
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient

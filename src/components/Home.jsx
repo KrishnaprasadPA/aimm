@@ -553,6 +553,7 @@ const Home = () => {
 
   const handleAddSuccess = () => {
     console.log("Factor added to the system.");
+    loadFactors();
     // Update any additional state if needed.
   };
 

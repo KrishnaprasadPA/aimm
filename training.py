@@ -372,6 +372,7 @@ def calculate_model_quality(updated_links):
     return quality
 
 def run_analysis(graph_data: Dict) -> Dict:
+    print("Graph data is: ", graph_data)
     """Main analysis function with temporal dependencies"""
     try:
         if not all(k in graph_data for k in ['factors', 'links']):

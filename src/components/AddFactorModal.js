@@ -159,7 +159,7 @@ const AddFactorModal = ({ onClose, onAddSuccess }) => {
           value = start + (end - start) * x; // Linear interpolation
           break;
         case "exponential":
-          value = start + (end - start) * Math.pow(x, 2); // Exponential interpolation
+          value = start + (end - start) * (1 - Math.pow(1 - x, 2));
           break;
         default:
           value = 0.5;
