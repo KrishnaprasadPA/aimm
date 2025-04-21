@@ -65,17 +65,54 @@ const ResizableChartComponent = ({
     if (data.length > 0 && futureData.length === 0) {
       const hasFutureData = factorData.some((item) => item.year >= 2025);
 
+      // if (!hasFutureData) {
+      //   const lastYear = data[data.length - 1].year;
+      //   const lastValue = data[data.length - 1].normalized_value;
+
+      //   const newFutureData = [];
+      //   for (let year = 2025; year <= 2035; year++) {
+      //     newFutureData.push({
+      //       year,
+      //       normalized_value: lastValue, // Use last value as a placeholder
+      //     });
+      //   }
+      //   setFutureData(newFutureData);
+      // }
       if (!hasFutureData) {
-        const lastYear = data[data.length - 1].year;
-        const lastValue = data[data.length - 1].normalized_value;
+        const historicalYears = data.map((d) => d.year);
+        const historicalValues = data.map((d) => d.normalized_value);
+
+        // Use last 5 years for trend
+        const recentData = historicalYears
+          .map((year, i) => ({ x: year, y: historicalValues[i] }))
+          .slice(-5);
+
+        // Calculate simple linear slope
+        const n = recentData.length;
+        const avgX = recentData.reduce((sum, p) => sum + p.x, 0) / n;
+        const avgY = recentData.reduce((sum, p) => sum + p.y, 0) / n;
+        const numerator = recentData.reduce(
+          (sum, p) => sum + (p.x - avgX) * (p.y - avgY),
+          0
+        );
+        const denominator = recentData.reduce(
+          (sum, p) => sum + (p.x - avgX) ** 2,
+          0
+        );
+        const slope = denominator !== 0 ? numerator / denominator : 0;
+        const intercept = avgY - slope * avgX;
 
         const newFutureData = [];
         for (let year = 2025; year <= 2035; year++) {
+          const value = intercept + slope * year;
           newFutureData.push({
             year,
-            normalized_value: lastValue, // Use last value as a placeholder
+            normalized_value: parseFloat(
+              Math.max(-2, Math.min(2, value.toFixed(2)))
+            ), // Clamp between -2 and 2
           });
         }
+
         setFutureData(newFutureData);
       }
     }
@@ -274,8 +311,8 @@ const ResizableChartComponent = ({
                   },
                   scales: {
                     y: {
-                      min: -1, // Set the minimum value of the y-axis
-                      max: 1, // Set the maximum value of the y-axis
+                      min: -4, // Set the minimum value of the y-axis
+                      max: 4, // Set the maximum value of the y-axis
                     },
                   },
                 }}

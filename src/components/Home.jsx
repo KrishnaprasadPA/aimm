@@ -850,6 +850,51 @@ const Home = () => {
     // setIsLoading(false);
   };
 
+  const handlePredictClick = async () => {
+    const graph = graphRef.current.graph;
+
+    if (!selectedTarget) {
+      alert("Please select a target factor.");
+      return;
+    }
+
+    const graphData = extractGraphData(graph);
+
+    try {
+      setIsLoading(true);
+      const response = await axios.post(`${apiUrl}/api/predict`, graphData);
+      const { predicted_values, model_quality } = response.data;
+
+      // Update quality
+      setModelQuality(model_quality.toFixed(2));
+
+      const updatedTarget = graphData.factors[selectedTarget];
+      const updatedSeries = updatedTarget.data.time_series_data.map((entry) => {
+        if (predicted_values[entry.year]) {
+          return {
+            ...entry,
+            value: predicted_values[entry.year].value,
+            normalized_value: predicted_values[entry.year].normalized_value,
+          };
+        }
+        return entry;
+      });
+
+      updatedTarget.data.time_series_data = updatedSeries;
+
+      if (selectedRectangle?.attributes?.factor?.name === selectedTarget) {
+        setSelectedFactorData(updatedSeries);
+      }
+
+      alert("Prediction complete!");
+    } catch (err) {
+      console.error("Prediction failed:", err);
+      alert("Prediction failed.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // const updateGraphWeights = (graph, updatedWeights) => {
   //   updatedWeights.forEach((updatedLink) => {
   //     const link = graph
@@ -2000,7 +2045,12 @@ const Home = () => {
               >
                 {isEditingOwnModel ? "Update" : "Save"}
               </CustomButton>
-              <CustomButton onClick={handleRetrainClick}>Retrain</CustomButton>
+              <CustomButton onClick={handleRetrainClick}>
+                Retrain Causal
+              </CustomButton>
+              <CustomButton onClick={handlePredictClick}>
+                Retrain Predict
+              </CustomButton>
             </Box>
           </Box>
 
