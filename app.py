@@ -1,6 +1,7 @@
 import json
 
-from training import run_analysis
+from causal_estimation_module_with_confounders import run_analysis
+from forecast_model import run_forecast
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
@@ -371,6 +372,17 @@ def retrain_model():
     except Exception as e:
         print("Error ", e)
         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/predict', methods=['POST'])
+def predict_future_values():
+    try:
+        graph_data = request.get_json()
+        result = run_forecast(graph_data)
+        return jsonify(result), 200
+    except Exception as e:
+        print("Prediction error:", e)
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     if os.getenv('ENVIRONMENT')== 'LOCAL':
