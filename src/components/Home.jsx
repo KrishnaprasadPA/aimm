@@ -800,7 +800,7 @@ const Home = () => {
       updateGraphWeights(graphRef.current.graph, updated_links);
 
       // Update the model quality
-      setModelQuality(model_quality.toFixed(2)); // Round to 2 decimal places
+      // setModelQuality(model_quality.toFixed(2)); // Round to 2 decimal places
 
       alert("Model retrained successfully!");
       setIsLoading(false);
