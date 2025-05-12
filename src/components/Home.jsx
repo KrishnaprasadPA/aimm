@@ -236,7 +236,8 @@ const Home = () => {
   const linkModal = new LinkModal();
   const [duplicatedGraphData, setDuplicatedGraphData] = useState(null);
   const [selectedFactorData, setSelectedFactorData] = useState(null); // Time series data
-  const [selectedFactorName, setselectedFactorName] = useState(null); // Time series data
+  const [selectedFactorName, setselectedFactorName] = useState(null);
+  const [selectedFactorUnit, setselectedFactorUnit] = useState(null);
   const [selectedRectangle, setSelectedRectangle] = useState(null); // Selected rectangle
   const [isChartVisible, setIsChartVisible] = useState(false); // For showing the chart modal
   const [showModels, setShowModels] = useState(false);
@@ -490,7 +491,7 @@ const Home = () => {
           console.error("Error loading user models:", error);
         });
     }
-  }, [duplicatedGraphData, showModels, isChartVisible]);
+  }, [duplicatedGraphData, showModels]);
 
   // Function to close a specific popover
   // const handleClosePopover = (popoverId) => {
@@ -514,12 +515,16 @@ const Home = () => {
     // Assuming time series data is stored in element.attributes.factor.time_series_data
     const timeSeriesData = element.attributes.factor.time_series_data;
     const factorName = element.attributes.factor.name;
+    const factorUnit = element.attributes.factor.unit;
 
     setSelectedFactorData(timeSeriesData);
     console.log("Time series data is: ", timeSeriesData);
 
     setselectedFactorName(factorName);
     console.log("Selected factor is : ", factorName);
+
+    setselectedFactorUnit(factorUnit);
+    console.log("Selected unit is : ", factorUnit);
 
     setSelectedRectangle(element);
     console.log("Selected rectangle is: ", element);
@@ -1312,14 +1317,7 @@ const Home = () => {
 
     // Update state with modified rectangle
     setSelectedRectangle(updatedRectangle);
-
-    // Optionally update selectedFactorData if needed
     setSelectedFactorData(updatedFactorData);
-
-    console.log("Updated Rectangle:", updatedRectangle);
-    console.log("Updated Factor Data:", updatedFactorData);
-
-    // Close chart after saving changes
     setIsChartVisible(false);
   };
 
@@ -1903,6 +1901,7 @@ const Home = () => {
             <ResizableChartComponent
               factorData={selectedFactorData}
               factorName={selectedFactorName}
+              factorUnit={selectedFactorUnit}
               predictionSeries={Object.values(
                 predictionSeries[selectedFactorName] || {}
               )}
