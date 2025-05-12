@@ -40,6 +40,7 @@ ChartJS.register(
 const ResizableChartComponent = ({
   factorData,
   factorName,
+  predictionSeries = [],
   onClose,
   onSave,
 }) => {
@@ -217,44 +218,145 @@ const ResizableChartComponent = ({
     if (chartRef.current) {
       chartRef.current.update(); // Force the chart to update
     }
-  }, [data, futureData]);
+  }, [data, futureData, predictionSeries]);
 
   // Chart data
-  const chartData = useMemo(
-    () => ({
-      labels: [
-        ...data.map((item) => item.year),
-        ...futureData.map((item) => item.year),
-      ], // Labels for all years (1993–2035)
+  // const chartData = useMemo(
+  //   () => ({
+  //     labels: [
+  //       ...data.map((item) => item.year),
+  //       ...futureData.map((item) => item.year),
+  //     ], // Labels for all years (1993–2035)
+  //     datasets: [
+  //       {
+  //         label: "Historical Data (1993–2024)",
+  //         data: [
+  //           ...data.map((item) => item.normalized_value),
+  //           ...Array(futureData.length).fill(null), // Fill future years with null
+  //         ],
+  //         borderColor: "rgba(75, 192, 192, 1)",
+  //         backgroundColor: "rgba(75, 192, 192, 0.2)",
+  //         fill: true,
+  //         pointRadius: 5,
+  //         pointHoverRadius: 8,
+  //       },
+  //       {
+  //         label: "Future Data (2025–2035)",
+  //         data: [
+  //           ...Array(data.length).fill(null), // Fill historical years with null
+  //           ...futureData.map((item) => item.normalized_value),
+  //         ],
+  //         borderColor: "rgba(255, 99, 132, 1)",
+  //         backgroundColor: "rgba(255, 99, 132, 0.2)",
+  //         fill: true,
+  //         pointRadius: 5,
+  //         pointHoverRadius: 8,
+  //       },
+  //       {
+  //         label: "Forecasted Values (1993–2035)", // <-- LSTM
+  //         data: predictionSeries.map((item) => item.normalized_value),
+  //         borderColor: "rgba(153, 102, 255, 1)",
+  //         backgroundColor: "rgba(153, 102, 255, 0.2)",
+  //         borderDash: [5, 5],
+  //         fill: false,
+  //         pointRadius: 3,
+  //         pointHoverRadius: 6,
+  //       },
+  //     ],
+  //   }),
+  //   [data, futureData, predictionSeries]
+  // );
+  const chartData = useMemo(() => {
+    const allYears = Array.from(
+      { length: 2035 - 1993 + 1 },
+      (_, i) => 1993 + i
+    );
+
+    const getYearMap = (arr) => {
+      const map = {};
+      arr.forEach((item) => {
+        map[item.year] = item.normalized_value;
+      });
+      return map;
+    };
+
+    const historicalMap = getYearMap(data); // 1993–2024
+    const futureMap = getYearMap(futureData); // 2025–2035
+    const predictionMap = getYearMap(predictionSeries); // 1993–2035
+
+    // return {
+    //   labels: allYears,
+    //   datasets: [
+    //     {
+    //       label: "Historical Data (1993–2024)",
+    //       data: allYears.map((year) => historicalMap[year] ?? null),
+    //       borderColor: "rgba(75, 192, 192, 1)",
+    //       backgroundColor: "rgba(75, 192, 192, 0.2)",
+    //       fill: true,
+    //       pointRadius: 4,
+    //       pointHoverRadius: 6,
+    //     },
+    //     {
+    //       label: "User Future Data (2025–2035)",
+    //       data: allYears.map((year) => futureMap[year] ?? null),
+    //       borderColor: "rgba(255, 99, 132, 1)",
+    //       backgroundColor: "rgba(255, 99, 132, 0.2)",
+    //       fill: true,
+    //       pointRadius: 4,
+    //       pointHoverRadius: 6,
+    //     },
+    //     {
+    //       label: "Model Predictions (1993–2035)",
+    //       data: allYears.map((year) => predictionMap[year] ?? null),
+    //       borderColor: "rgba(54, 162, 235, 1)",
+    //       backgroundColor: "rgba(54, 162, 235, 0.2)",
+    //       borderDash: [6, 4],
+    //       fill: false,
+    //       pointRadius: 3,
+    //       pointHoverRadius: 5,
+    //     },
+    //   ],
+    // };
+    return {
+      labels: allYears,
       datasets: [
         {
           label: "Historical Data (1993–2024)",
-          data: [
-            ...data.map((item) => item.normalized_value),
-            ...Array(futureData.length).fill(null), // Fill future years with null
-          ],
-          borderColor: "rgba(75, 192, 192, 1)",
-          backgroundColor: "rgba(75, 192, 192, 0.2)",
-          fill: true,
-          pointRadius: 5,
-          pointHoverRadius: 8,
+          data: allYears.map((year) => historicalMap[year] ?? null),
+          borderColor: "#2ca02c", // Blue
+          backgroundColor: "transparent",
+          fill: false,
+          borderWidth: 1.5,
+          pointBackgroundColor: "#2ca02c", // Opaque data points
+          pointRadius: 3,
+          pointHoverRadius: 5,
         },
         {
-          label: "Future Data (2025–2035)",
-          data: [
-            ...Array(data.length).fill(null), // Fill historical years with null
-            ...futureData.map((item) => item.normalized_value),
-          ],
-          borderColor: "rgba(255, 99, 132, 1)",
-          backgroundColor: "rgba(255, 99, 132, 0.2)",
-          fill: true,
-          pointRadius: 5,
-          pointHoverRadius: 8,
+          label: "User Future Data (2025–2035)",
+          data: allYears.map((year) => futureMap[year] ?? null),
+          borderColor: "#d62728", // Red
+          backgroundColor: "transparent",
+          fill: false,
+          borderWidth: 1.5,
+          pointBackgroundColor: "#d62728", // Opaque data points
+          pointRadius: 3,
+          pointHoverRadius: 5,
+        },
+        {
+          label: "Model Predictions (1993–2035)",
+          data: allYears.map((year) => predictionMap[year] ?? null),
+          borderColor: "#1f77b4", // Green
+          backgroundColor: "transparent",
+          borderDash: [5, 4],
+          fill: false,
+          borderWidth: 1.5,
+          pointBackgroundColor: "#1f77b4", // Opaque data points
+          pointRadius: 3,
+          pointHoverRadius: 5,
         },
       ],
-    }),
-    [data, futureData]
-  );
+    };
+  }, [data, futureData, predictionSeries]);
 
   // Handle dialog resize
   const onResize = (event, { size }) => {
@@ -360,9 +462,9 @@ const ResizableChartComponent = ({
                         step: 0.01,
                       }}
                     />
-                    <IconButton onClick={() => handleDeleteRow(index)}>
+                    {/* <IconButton onClick={() => handleDeleteRow(index)}>
                       <CloseIcon />
-                    </IconButton>
+                    </IconButton> */}
                   </Paper>
                 </Grid>
               ))}
@@ -406,20 +508,20 @@ const ResizableChartComponent = ({
                         step: 0.01,
                       }}
                     />
-                    <IconButton onClick={() => handleDeleteRow(index, true)}>
+                    {/* <IconButton onClick={() => handleDeleteRow(index, true)}>
                       <CloseIcon />
-                    </IconButton>
+                    </IconButton> */}
                   </Paper>
                 </Grid>
               ))}
               <Grid item xs={12}>
-                <Button
+                {/* <Button
                   onClick={handleAddRow}
                   startIcon={<AddIcon />}
                   style={{ marginTop: 16 }}
                 >
                   Add Future Data
-                </Button>
+                </Button> */}
               </Grid>
             </Grid>
           )}

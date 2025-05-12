@@ -510,29 +510,6 @@ const AddFactorModal = ({ onClose, onAddSuccess }) => {
     });
   };
 
-  const handleAddYear = () => {
-    const newYear = maxYear + 1;
-    let newValue;
-
-    switch (graphType) {
-      case "straight":
-        newValue = parseFloat(singleValue);
-        break;
-      case "linear":
-      case "exponential":
-        newValue = parseFloat(endValue);
-        break;
-      default:
-        newValue = 0;
-    }
-
-    setMaxYear(newYear);
-    setNewFactor((prev) => ({
-      ...prev,
-      timeSeries: [...prev.timeSeries, newValue],
-    }));
-  };
-
   const handleDeleteYear = (index) => {
     if (years[index] > 2035) {
       setNewFactor((prev) => {
@@ -773,13 +750,6 @@ const AddFactorModal = ({ onClose, onAddSuccess }) => {
             </div>
           )}
           <div className="form-actions">
-            <CustomButton
-              type="button"
-              onClick={handleAddYear}
-              className="btn-time"
-            >
-              Add Year
-            </CustomButton>
             <button
               type="submit"
               className="btn-primary"

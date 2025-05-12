@@ -1,256 +1,164 @@
-# # # forecast_model.py
-# # import numpy as np
-# # import pandas as pd
-# # from sklearn.linear_model import LinearRegression
-
-# # def run_forecast(graph_data):
-# #     print(graph_data)
-# #     target_name = graph_data.get("selectedTarget")
-# #     factors = graph_data.get("factors")
-# #     links = graph_data.get("links")
-
-# #     if target_name not in factors:
-# #         raise ValueError("Target factor not found in graph")
-
-# #     # Extract target series
-# #     target_series = factors[target_name]["data"]["time_series_data"]
-# #     df = pd.DataFrame(target_series)
-# #     df = df[df["year"] <= 2035]
-
-# #     # Feature construction using 5-year lag
-# #     df["y"] = df["value"]
-# #     for lag in range(1, 6):
-# #         df[f"lag_{lag}"] = df["y"].shift(lag)
-
-# #     df.dropna(inplace=True)
-# #     train_df = df[df["year"] <= 2017]
-# #     test_df = df[(df["year"] > 2017) & (df["year"] <= 2024)]
-# #     future_df = pd.DataFrame({"year": list(range(2025, 2036))})
-
-# #     # Train
-# #     model = LinearRegression()
-# #     X_train = train_df[[f"lag_{i}" for i in range(1, 6)]]
-# #     y_train = train_df["y"]
-# #     model.fit(X_train, y_train)
-
-# #     # Test accuracy (quality)
-# #     X_test = test_df[[f"lag_{i}" for i in range(1, 6)]]
-# #     y_test = test_df["y"]
-# #     y_pred_test = model.predict(X_test)
-# #     mse = np.mean((y_test - y_pred_test) ** 2)
-# #     quality = max(0, 100 - mse)
-
-# #     # Predict future
-# #     # predictions = []
-# #     # last_known = df.iloc[-5:]["y"].tolist()
-# #     # for year in range(2025, 2036):
-# #     #     X_input = np.array(last_known[-5:]).reshape(1, -1)
-# #     #     y_pred = model.predict(X_input)[0]
-# #     #     predictions.append({"year": year, "value": y_pred, "normalized_value": y_pred})  # Normalize if needed
-# #     #     last_known.append(y_pred)
-
-# #     # 1. Predict future values and collect raw outputs
-# #     raw_preds = []
-# #     last_known = df.iloc[-5:]["y"].tolist()
-
-# #     for year in range(2025, 2036):
-# #         X_input = np.array(last_known[-5:]).reshape(1, -1)
-# #         y_pred = model.predict(X_input)[0]
-# #         raw_preds.append((year, y_pred))
-# #         last_known.append(y_pred)
-
-# #     # 2. Extract only predicted values
-# #     pred_values = np.array([val for (_, val) in raw_preds])
-
-# #     # 3. Normalize predicted values to [0, 1]
-# #     min_val = np.min(pred_values)
-# #     max_val = np.max(pred_values)
-# #     normalized = (pred_values) / (max_val+ 1e-8)
-
-# #     # 4. Combine into predictions list
-# #     predictions = []
-# #     for (year, raw_val), norm_val in zip(raw_preds, normalized):
-# #         predictions.append({
-# #             "year": year,
-# #             "value": round(raw_val, 2),
-# #             "normalized_value": round(norm_val, 4)
-# #         })
-
-
-# #     predicted_values = {p["year"]: p for p in predictions}
-    
-
-# #     print (predicted_values)
-# #     print(quality)
-
-# #     return {
-# #         "predicted_values": predicted_values,
-# #         "model_quality": quality
-# #     }
-
-# import numpy as np
-# import pandas as pd
-# from sklearn.preprocessing import MinMaxScaler
-# from sklearn.metrics import mean_squared_error
-# from tensorflow.keras.models import Sequential
-# from tensorflow.keras.layers import LSTM, Dense
-# from tensorflow.keras.optimizers import Adam
-# from tensorflow.keras.callbacks import EarlyStopping
-
-# def run_forecast(graph_data):
-#     target_name = graph_data.get("selectedTarget")
-#     factors = graph_data.get("factors")
-#     links = graph_data.get("links")
-
-#     if target_name not in factors:
-#         raise ValueError("Target factor not found in graph")
-
-#     # Step 1: Extract and clean target series
-#     target_series = factors[target_name]["data"]["time_series_data"]
-#     df = pd.DataFrame(target_series)
-#     df = df[df["year"] <= 2035]
-#     df["y"] = df["value"]
-
-#     # Step 2: Normalize
-#     scaler = MinMaxScaler()
-#     df["normalized"] = scaler.fit_transform(df[["y"]])
-
-#     # Step 3: Create lag features
-#     window_size = 5
-#     for lag in range(1, window_size + 1):
-#         df[f"lag_{lag}"] = df["normalized"].shift(lag)
-
-#     df.dropna(inplace=True)
-
-#     # Step 4: Split
-#     train_df = df[df["year"] <= 2017]
-#     test_df = df[(df["year"] > 2017) & (df["year"] <= 2024)]
-#     future_years = list(range(2025, 2036))
-
-#     X_train = train_df[[f"lag_{i}" for i in range(1, 6)]].values.reshape(-1, window_size, 1)
-#     y_train = train_df["normalized"].values
-
-#     X_test = test_df[[f"lag_{i}" for i in range(1, 6)]].values.reshape(-1, window_size, 1)
-#     y_test = test_df["normalized"].values
-
-#     # Step 5: LSTM model
-#     model = Sequential([
-#         LSTM(32, input_shape=(window_size, 1)),
-#         Dense(1)
-#     ])
-#     model.compile(optimizer=Adam(learning_rate=0.01), loss="mse")
-#     model.fit(X_train, y_train, epochs=100, verbose=0, callbacks=[
-#         EarlyStopping(monitor="loss", patience=10, restore_best_weights=True)
-#     ])
-
-#     # Step 6: Evaluate on test set
-#     y_pred_test = model.predict(X_test).flatten()
-#     mse = mean_squared_error(y_test, y_pred_test)
-#     quality = max(0, 100 * (1 - mse))  # Better bounded quality score
-
-#     # Step 7: Predict future years
-#     predictions = []
-#     last_known = df.iloc[-5:]["normalized"].tolist()
-
-#     for year in future_years:
-#         input_seq = np.array(last_known[-5:]).reshape(1, 5, 1)
-#         pred = model.predict(input_seq)[0][0]
-#         predictions.append({
-#             "year": year,
-#             "value": float(scaler.inverse_transform([[pred]])[0][0]),
-#             "normalized_value": float(pred)
-#         })
-#         last_known.append(pred)
-
-#     predicted_values = {p["year"]: p for p in predictions}
-
-#     return {
-#         "predicted_values": predicted_values,
-#         "model_quality": round(quality, 2)
-#     }
 
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error
+from sklearn.linear_model import Ridge
+from sklearn.model_selection import cross_val_score
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras import Input
 
-def get_connected_factors(target, links):
-    adjacency = {}
-    for link in links:
-        src = link["startFactor"]
-        dst = link["endFactor"]
-        adjacency.setdefault(src, []).append(dst)
-        adjacency.setdefault(dst, []).append(src)  # treat as undirected for reachability
 
-    visited = set()
-    queue = [target]
+def get_parents(child_name, links):
+    return [link["startFactor"] for link in links if link["endFactor"] == child_name and link["startFactor"] != child_name]
 
-    while queue:
-        node = queue.pop(0)
-        if node not in visited:
-            visited.add(node)
-            queue.extend(adjacency.get(node, []))
+# def compute_consistency_score(factors, links):
+#     scores = []
 
-    return visited
+#     for child in factors:
+#         parent_names = get_parents(child, links)
+#         if not parent_names:
+#             continue
+
+#         df = pd.DataFrame(factors[child]["data"]["time_series_data"])
+#         df = df.sort_values("year")[["year", "normalized_value"]].rename(columns={"normalized_value": "target"})
+
+#         for pname in parent_names:
+#             pdata = pd.DataFrame(factors[pname]["data"]["time_series_data"])
+#             pdata = pdata.sort_values("year")[["year", "normalized_value"]].rename(columns={"normalized_value": f"{pname}_norm"})
+#             df = df.merge(pdata, on="year", how="left")
+
+#             for lag in range(1, 6):
+#                 df[f"{pname}_lag_{lag}"] = df[f"{pname}_norm"].shift(lag)
+
+#         df.dropna(inplace=True)
+#         if df.shape[0] < 3:
+#             continue
+
+#         X = df[[col for col in df.columns if "lag" in col]]
+#         y = df["target"]
+
+#         try:
+#             model = Ridge()
+#             r2 = cross_val_score(model, X, y, cv=3, scoring="r2").mean()
+#             scores.append(r2)
+
+#             print(f"✅ R² for {child} predicted by {parent_names}: {r2:.4f} (rows: {df.shape[0]})")
+
+#         except Exception as e:
+#             print(f"❌ Error scoring {child}: {e}")
+#             continue
+
+#     combined = np.mean(scores)
+#     return round(float(combined), 2) if scores else 0.0
+def compute_consistency_score(factors, links):
+    scores = []
+
+    for child in factors:
+        parent_names = get_parents(child, links)
+        if not parent_names:
+            continue
+
+        df = pd.DataFrame(factors[child]["data"]["time_series_data"])
+        df = df.sort_values("year")[["year", "normalized_value"]].rename(columns={"normalized_value": "target"})
+
+        print(f"\n🔍 Debugging: Child = {child} with parents = {parent_names}")
+
+        for pname in parent_names:
+            pdata = pd.DataFrame(factors[pname]["data"]["time_series_data"])
+            pdata = pdata.sort_values("year")[["year", "normalized_value"]].rename(columns={"normalized_value": f"{pname}_norm"})
+            df = df.merge(pdata, on="year", how="left")
+
+            for lag in range(1, 3):
+                df[f"{pname}_lag_{lag}"] = df[f"{pname}_norm"].shift(lag)
+
+            # 🔍 Debug: Show a preview of alignment
+            print(f"\n📋 Alignment Preview for parent: {pname}")
+            print(df[["year", "target", f"{pname}_norm", f"{pname}_lag_1", f"{pname}_lag_2"]].head(8))
+
+            # 🔍 Optional: Plot target vs lag_1
+            try:
+                plt.figure(figsize=(6, 3))
+                plt.plot(df["year"], df["target"], label=f"{child} (target)")
+                plt.plot(df["year"], df[f"{pname}_lag_1"], label=f"{pname} lag 1")
+                plt.title(f"{child} vs {pname} lag 1")
+                plt.legend()
+                plt.tight_layout()
+                plt.show()
+            except Exception as e:
+                print(f"❌ Plotting error: {e}")
+
+        df.dropna(inplace=True)
+        if df.shape[0] < 5:
+            print(f"⚠️ Skipping {child}: Not enough aligned data after lagging.")
+            continue
+
+        X = df[[col for col in df.columns if "lag" in col]]
+        y = df["target"]
+
+        print(f"\n📊 {child}: Using {df.shape[0]} samples with {X.shape[1]} features")
+
+        # 🔍 Check feature matrix
+        print("🧪 Sample features:")
+        print(X.head(5))
+
+        try:
+            model = Ridge()
+            r2 = cross_val_score(model, X, y, cv=5, scoring="r2").mean()
+            scores.append(r2)
+            print(f"✅ Combined R² for {child} by {parent_names}: {r2:.4f} (rows: {df.shape[0]})")
+        except Exception as e:
+            print(f"❌ Error scoring {child}: {e}")
+            continue
+
+    combined = np.mean(scores)
+    return round(float(combined), 2) if scores else 0.0
+
+
 
 def run_forecast(graph_data):
-    target_name = graph_data.get("selectedTarget")
-    factors = graph_data.get("factors")
-    links = graph_data.get("links")
+    target_name = graph_data["selectedTarget"]
+    factors = graph_data["factors"]
+    links = graph_data["links"]
 
     if target_name not in factors:
         raise ValueError("Target factor not found in graph")
 
-    # Step 1: Get all connected factors
-    connected_factors = get_connected_factors(target_name, links)
-    connected_factors.discard(target_name)
+    parents = get_parents(target_name, links)
+    years = list(range(1993, 2036))
 
-    # Step 2: Extract target series
-    target_series = factors[target_name]["data"]["time_series_data"]
-    df = pd.DataFrame(target_series)
-    df = df[df["year"] <= 2035]
-    df["y"] = df["value"]
+    # Prepare parent factor data
+    factor_dfs = {}
+    for fname in parents:
+        fdf = pd.DataFrame(factors[fname]["data"]["time_series_data"])[["year", "normalized_value"]]
+        fdf = fdf.set_index("year").reindex(years).fillna(method="ffill").fillna(method="bfill")
+        factor_dfs[fname] = fdf
 
-    # Step 3: Normalize target and create lag features
-    scaler = MinMaxScaler()
-    df["normalized"] = scaler.fit_transform(df[["y"]])
-    for lag in range(1, 6):
-        df[f"lag_{lag}"] = df["normalized"].shift(lag)
+    # Prepare target data (use pre-standardized values)
+    target_df = pd.DataFrame(factors[target_name]["data"]["time_series_data"])
+    full_df = target_df.set_index("year").reindex(years)
+    full_df["normalized"] = full_df["normalized_value"].fillna(method="ffill").fillna(method="bfill")
+    full_df["value"] = full_df["value"].fillna(method="ffill").fillna(method="bfill")
+    target_norm_series = full_df["normalized"].tolist()
 
-    # Step 4: Merge connected factors and create lag features
-    for fname in connected_factors:
-        series = pd.DataFrame(factors[fname]["data"]["time_series_data"])
-        series = series[["year", "value"]].rename(columns={"value": f"{fname}_val"})
-        norm_col = f"{fname}_norm"
-        series[norm_col] = MinMaxScaler().fit_transform(series[[f"{fname}_val"]])
-        df = df.merge(series[["year", norm_col]], on="year", how="left")
-        for lag in range(1, 6):
-            df[f"{fname}_lag_{lag}"] = df[norm_col].shift(lag)
+    # Build training data using rolling window
+    lag_window = 5
+    rows = []
+    for i in range(lag_window, years.index(2025)):  # Use data up to 2024
+        input_row = target_norm_series[i - lag_window:i]
 
-    df.dropna(inplace=True)
+        for fname in parents:
+            input_row.extend([factor_dfs[fname].iloc[i - l]["normalized_value"] for l in range(1, 6)])
 
-    # Step 5: Split
-    train_df = df[df["year"] <= 2017]
-    test_df = df[(df["year"] > 2017) & (df["year"] <= 2024)]
-    future_years = list(range(2025, 2036))
+        rows.append((input_row, target_norm_series[i]))
 
-    input_cols = [f"lag_{i}" for i in range(1, 6)]
-    for fname in connected_factors:
-        input_cols.extend([f"{fname}_lag_{i}" for i in range(1, 6)])
+    X_train = np.array([r[0] for r in rows]).reshape(-1, len(rows[0][0]), 1)
+    y_train = np.array([r[1] for r in rows])
 
-    X_train = train_df[input_cols].values.reshape(-1, len(input_cols), 1)
-    y_train = train_df["normalized"].values
-    X_test = test_df[input_cols].values.reshape(-1, len(input_cols), 1)
-    y_test = test_df["normalized"].values
-
-    # Step 6: Train LSTM
+    # Train LSTM model
     model = Sequential([
-        Input(shape=(len(input_cols), 1)),
+        Input(shape=(X_train.shape[1], 1)),
         LSTM(32),
         Dense(1)
     ])
@@ -259,35 +167,41 @@ def run_forecast(graph_data):
         EarlyStopping(monitor="loss", patience=10, restore_best_weights=True)
     ])
 
-    # Step 7: Evaluate
-    y_pred_test = model.predict(X_test).flatten()
-    mse = mean_squared_error(y_test, y_pred_test)
-    quality = max(0, 100 * (1 - mse))
+    # Predict recursively from 1998 to 2035
+    predicted = []
+    past_target = target_norm_series[:5]  # 1993–1997
 
-    # Step 8: Predict future values
-    predictions = []
-    X_last = df.iloc[-1:][input_cols].values.reshape(1, len(input_cols), 1)
+    for i, year in enumerate(years[5:], start=5):
+        input_row = past_target[-5:]
 
-    for year in future_years:
-        pred = model.predict(X_last)[0][0]
-        value = float(scaler.inverse_transform([[pred]])[0][0])
-        predictions.append({
+        for fname in parents:
+            input_row.extend([factor_dfs[fname].iloc[i - l]["normalized_value"] for l in range(1, 6)])
+
+        X_input = np.array(input_row).reshape(1, len(input_row), 1)
+        pred_norm = model.predict(X_input, verbose=0)[0][0]
+        past_target.append(pred_norm)
+
+        # No inverse transform, just estimate value using historical mean/std
+        pred_val = full_df["value"].mean() + pred_norm * full_df["value"].std()
+
+        predicted.append({
             "year": year,
-            "value": round(value, 2),
-            "normalized_value": round(float(pred), 4)
+            "value": round(float(pred_val), 2),
+            "normalized_value": round(float(pred_norm), 4)
         })
 
-        # Roll window: drop 1 and append pred
-        last_input = X_last.flatten().tolist()[5:] + [pred]
-        if len(last_input) < len(input_cols):
-            last_input += [0] * (len(input_cols) - len(last_input))
+    # Add initial real values (1993–1997)
+    for i in range(5):
+        y = years[i]
+        predicted.insert(i, {
+            "year": y,
+            "value": round(float(full_df.iloc[i]["value"]), 2),
+            "normalized_value": round(float(target_norm_series[i]), 4)
+        })
 
-        X_last = np.array(last_input).reshape(1, len(input_cols), 1)
-
-    predicted_values = {p["year"]: p for p in predictions}
-    print ("quality is: ", quality)
+    consistency_score = compute_consistency_score(factors, links)
 
     return {
-        "predicted_values": predicted_values,
-        "model_quality": round(quality, 2)
+        "predicted_values": predicted,
+        "model_quality": consistency_score
     }
