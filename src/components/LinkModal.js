@@ -323,7 +323,7 @@ class LinkModal {
   getLinkThickness(weight) {
     const absoluteWeight = Math.abs(weight);
     // Thickness ranges from 1 (minimum) to 3 (maximum)
-    return 0.5 + absoluteWeight * 3; // Adjust multiplier as needed
+    return 0.5 + Math.min(absoluteWeight, 4); // Adjust multiplier as needed
   }
 
   // Helper function to calculate link color based on weight

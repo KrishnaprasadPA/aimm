@@ -236,7 +236,8 @@ const Home = () => {
   const linkModal = new LinkModal();
   const [duplicatedGraphData, setDuplicatedGraphData] = useState(null);
   const [selectedFactorData, setSelectedFactorData] = useState(null); // Time series data
-  const [selectedFactorName, setselectedFactorName] = useState(null); // Time series data
+  const [selectedFactorName, setselectedFactorName] = useState(null);
+  const [selectedFactorUnit, setselectedFactorUnit] = useState(null);
   const [selectedRectangle, setSelectedRectangle] = useState(null); // Selected rectangle
   const [isChartVisible, setIsChartVisible] = useState(false); // For showing the chart modal
   const [showModels, setShowModels] = useState(false);
@@ -247,6 +248,7 @@ const Home = () => {
   const [isCustomExpanded, setIsCustomExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isEditingOwnModel, setIsEditingOwnModel] = useState(false);
+  const [predictionSeries, setPredictionSeries] = useState({});
 
   const handleToggleExpand = () => {
     setIsExpanded(!isExpanded);
@@ -323,49 +325,6 @@ const Home = () => {
       },
     });
 
-    // paper.on("element:contextmenu", (elementView, evt) => {
-    //   evt.preventDefault();
-
-    //   const menu = document.createElement("div");
-    //   menu.style.position = "absolute";
-    //   menu.style.left = `${evt.clientX}px`;
-    //   menu.style.top = `${evt.clientY}px`;
-    //   menu.style.background = "white";
-    //   menu.style.border = "1px solid #ccc";
-    //   menu.style.borderRadius = "4px";
-    //   menu.style.padding = "4px";
-    //   menu.style.zIndex = 10000;
-    //   menu.innerHTML = `
-    //     <div id="context-edit" style="padding: 4px; cursor: pointer;">Edit</div>
-    //     <div id="context-delete" style="padding: 4px; cursor: pointer;">Delete</div>
-    //   `;
-
-    //   document.body.appendChild(menu);
-
-    //   const removeMenu = () => {
-    //     if (menu.parentNode) {
-    //       menu.parentNode.removeChild(menu);
-    //     }
-    //     document.removeEventListener("click", removeMenu);
-    //   };
-
-    //   document.getElementById("context-edit").onclick = () => {
-    //     handleOpenPopover(elementView.model); // Open time series chart
-    //     removeMenu();
-    //   };
-
-    //   document.getElementById("context-delete").onclick = () => {
-    //     const factorId = elementView.model.attributes.factor._id;
-    //     setAddedFactors((prev) => prev.filter((id) => id !== factorId));
-    //     elementView.model.remove();
-    //     removeMenu();
-    //   };
-
-    //   setTimeout(() => {
-    //     document.addEventListener("click", removeMenu);
-    //   }, 0);
-    // });
-
     paper.on("element:contextmenu", (elementView, evt) => {
       evt.preventDefault();
 
@@ -398,6 +357,10 @@ const Home = () => {
           transition: background 0.2s;
           color: #d32f2f;
         ">🗑️ Delete</div>
+          <div id="context-set-target" 
+          style="padding: 8px 16px; 
+          cursor: pointer;">🎯 Set as Target</div>
+
       `;
 
       // Hover effects
@@ -426,9 +389,31 @@ const Home = () => {
       document.getElementById("context-delete").onclick = () => {
         const factorId = elementView.model.attributes.factor._id;
         setAddedFactors((prev) => prev.filter((id) => id !== factorId));
+        const factorName = elementView.model.attributes.factor.name;
+        setPredictionSeries((prev) => {
+          const updated = { ...prev };
+          delete updated[factorName];
+          return updated;
+        });
+
         elementView.model.remove();
         removeMenu();
       };
+
+      setTimeout(() => {
+        const targetBtn = document.getElementById("context-set-target");
+        if (targetBtn) {
+          targetBtn.onclick = () => {
+            const factorName = elementView.model.attributes.factor.name;
+            setSelectedTarget(factorName);
+            alert(`Target factor set to "${factorName}"`);
+
+            // Visually update rectangle colors
+
+            removeMenu();
+          };
+        }
+      }, 0);
 
       setTimeout(() => {
         document.addEventListener("click", removeMenu);
@@ -513,7 +498,7 @@ const Home = () => {
           console.error("Error loading user models:", error);
         });
     }
-  }, [duplicatedGraphData, showModels, isChartVisible]);
+  }, [duplicatedGraphData, showModels]);
 
   // Function to close a specific popover
   // const handleClosePopover = (popoverId) => {
@@ -537,12 +522,16 @@ const Home = () => {
     // Assuming time series data is stored in element.attributes.factor.time_series_data
     const timeSeriesData = element.attributes.factor.time_series_data;
     const factorName = element.attributes.factor.name;
+    const factorUnit = element.attributes.factor.unit;
 
     setSelectedFactorData(timeSeriesData);
     console.log("Time series data is: ", timeSeriesData);
 
     setselectedFactorName(factorName);
     console.log("Selected factor is : ", factorName);
+
+    setselectedFactorUnit(factorUnit);
+    console.log("Selected unit is : ", factorUnit);
 
     setSelectedRectangle(element);
     console.log("Selected rectangle is: ", element);
@@ -636,6 +625,13 @@ const Home = () => {
       console.error("Error loading factors:", error);
     }
   };
+
+  const combinedFactors = [
+    ...targetVariables,
+    ...adminFactors.filter(
+      (af) => !targetVariables.some((tv) => tv._id === af._id)
+    ),
+  ];
 
   const loadModels = async () => {
     try {
@@ -862,29 +858,16 @@ const Home = () => {
 
     try {
       setIsLoading(true);
+      setPredictionSeries({}); // Clears all previous predictions
       const response = await axios.post(`${apiUrl}/api/predict`, graphData);
       const { predicted_values, model_quality } = response.data;
 
-      // Update quality
       setModelQuality(model_quality.toFixed(2));
 
-      const updatedTarget = graphData.factors[selectedTarget];
-      const updatedSeries = updatedTarget.data.time_series_data.map((entry) => {
-        if (predicted_values[entry.year]) {
-          return {
-            ...entry,
-            value: predicted_values[entry.year].value,
-            normalized_value: predicted_values[entry.year].normalized_value,
-          };
-        }
-        return entry;
-      });
-
-      updatedTarget.data.time_series_data = updatedSeries;
-
-      if (selectedRectangle?.attributes?.factor?.name === selectedTarget) {
-        setSelectedFactorData(updatedSeries);
-      }
+      setPredictionSeries((prev) => ({
+        ...prev,
+        [selectedTarget]: predicted_values,
+      }));
 
       alert("Prediction complete!");
     } catch (err) {
@@ -895,169 +878,70 @@ const Home = () => {
     }
   };
 
-  // const updateGraphWeights = (graph, updatedWeights) => {
-  //   updatedWeights.forEach((updatedLink) => {
-  //     const link = graph
-  //       .getLinks()
-  //       .find(
-  //         (l) =>
-  //           l.getSourceCell()?.attributes?.attrs?.label?.text ===
-  //             updatedLink.startFactor &&
-  //           l.getTargetCell()?.attributes?.attrs?.label?.text ===
-  //             updatedLink.endFactor
-  //       );
-
-  //     if (link && link.attributes.trainable) {
-  //       link.set("weight", updatedLink.new_weight);
-  //       console.log(
-  //         `Updated weight for link ${updatedLink.startFactor} -> ${updatedLink.endFactor}`
-  //       );
-  //     }
-  //   });
-  // };
   const updateGraphWeights = (graph, updatedLinks) => {
-    updatedLinks.forEach((updatedLink) => {
-      const link = graph
+    updatedLinks.forEach(({ startFactor, endFactor, weight, trainable }) => {
+      const sourceElement = graph
+        .getElements()
+        .find((el) => el.attributes.attrs.label.text === startFactor);
+      const targetElement = graph
+        .getElements()
+        .find((el) => el.attributes.attrs.label.text === endFactor);
+
+      if (!sourceElement || !targetElement) return;
+
+      let existingLink = graph
         .getLinks()
         .find(
           (l) =>
-            l.getSourceCell()?.attributes?.attrs?.label?.text ===
-              updatedLink.startFactor &&
-            l.getTargetCell()?.attributes?.attrs?.label?.text ===
-              updatedLink.endFactor
+            l.getSourceCell()?.attributes?.attrs?.label?.text === startFactor &&
+            l.getTargetCell()?.attributes?.attrs?.label?.text === endFactor
         );
 
-      if (link && link.attributes.trainable !== false) {
-        const roundedWeight = Math.round(updatedLink.weight * 100) / 100; // Round to 2 decimal places
-        link.set("weight", roundedWeight);
+      const isSelfLoop = startFactor === endFactor;
 
-        // Update link appearance
-        link.attr({
-          line: {
-            stroke: linkModal.getLinkColor(roundedWeight), // Update color
-            strokeWidth: linkModal.getLinkThickness(roundedWeight), // Update thickness
+      if (!existingLink) {
+        existingLink = new joint.shapes.standard.Link({
+          source: { id: sourceElement.id },
+          target: { id: targetElement.id },
+          attrs: {
+            line: {
+              stroke: linkModal.getLinkColor(weight),
+              strokeWidth: linkModal.getLinkThickness(weight),
+            },
           },
+          weight: weight,
+          trainable: trainable,
         });
 
-        console.log(
-          `Updated weight for link ${updatedLink.startFactor} -> ${updatedLink.endFactor}`
+        if (isSelfLoop) {
+          const bbox = sourceElement.getBBox();
+          const offset = 40;
+          existingLink.set({
+            connector: { name: "smooth" },
+            vertices: [
+              { x: bbox.x + bbox.width + offset, y: bbox.y - offset },
+              {
+                x: bbox.x + bbox.width + offset,
+                y: bbox.y + bbox.height + offset,
+              },
+            ],
+          });
+        }
+
+        graph.addCell(existingLink);
+      }
+
+      if (existingLink.attributes.trainable !== false) {
+        existingLink.set("weight", Math.round(weight * 100) / 100);
+        existingLink.attr("line/stroke", linkModal.getLinkColor(weight));
+        existingLink.attr(
+          "line/strokeWidth",
+          linkModal.getLinkThickness(weight)
         );
       }
     });
   };
 
-  // const addRectangleToGraph = (factor) => {
-  //   if (addedFactors.includes(factor._id)) {
-  //     alert(`${factor.name} is already added to the canvas.`);
-  //     return;
-  //   }
-
-  //   const portsOut = {
-  //     position: {
-  //       name: "right",
-  //     },
-  //     attrs: {
-  //       label: { text: "out" },
-  //       portBody: {
-  //         magnet: true,
-  //         r: 4,
-  //         fill: "black",
-  //         stroke: "white",
-  //       },
-  //     },
-  //     markup: [
-  //       {
-  //         tagName: "circle",
-  //         selector: "portBody",
-  //       },
-  //     ],
-  //   };
-
-  //   let rectColor = factor.color || "#8e7fa2"; // Default purple color
-
-  //   // Check if factorName is in targetVariables and change color accordingly
-  //   if (targetVariables.includes(factor)) {
-  //     rectColor = "#80396e";
-  //   }
-
-  //   if (graphRef.current && graphRef.current.graph) {
-  //     const newX = lastRectPosition.x + 10;
-  //     const newY = lastRectPosition.y + 10;
-  //     const rect = new joint.shapes.standard.Rectangle({
-  //       ports: {
-  //         groups: {
-  //           out: portsOut,
-  //         },
-  //       },
-  //       factor: factor,
-  //       markup: [
-  //         { tagName: "rect", selector: "body" },
-  //         { tagName: "text", selector: "label" },
-  //       ],
-  //     });
-  //     rect.position(newX, newY); // Adjust position as needed
-  //     rect.resize(120, 40);
-  //     rect.attr({
-  //       body: {
-  //         fill: rectColor, // Purple color
-  //         // borderRadius: "3px",
-  //         stroke: "#121212",
-  //         strokeWidth: 1,
-  //       },
-  //       label: {
-  //         text: factor.name,
-  //         fill: "white",
-  //         fontSize: 10, // Smaller font size
-  //       },
-  //       deleteButton: {
-  //         refX: "100%", // Position at right edge
-  //         refX2: -12, // 12px from right edge
-  //         y: 0, // Top edge
-  //         width: 12, // Small square
-  //         height: 12,
-  //         fill: "#ff4d4d", // Red background
-  //         cursor: "pointer",
-  //         rx: 2, // Slightly rounded corners
-  //         ry: 2,
-  //       },
-  //       deleteIcon: {
-  //         refX: "100%", // Same positioning as button
-  //         refX2: -6, // Center horizontally
-  //         y: 9, // Center vertically
-  //         text: "×", // Cross symbol
-  //         fill: "white",
-  //         "font-size": 10,
-  //         "font-weight": "bold",
-  //         "pointer-events": "none",
-  //       },
-  //     });
-
-  //     rect.addPorts([
-  //       {
-  //         group: "out",
-  //       },
-  //     ]);
-
-  //     rect.on("change:attrs", function () {
-  //       const view = this.findView(graphRef.current.paper);
-  //       const deleteButton = view?.findBySelector("deleteButton")[0];
-  //       deleteButton?.addEventListener("click", (evt) => {
-  //         evt.stopPropagation();
-  //         const factorId = this.attributes.factor._id;
-  //         setAddedFactors(addedFactors.filter((id) => id !== factorId));
-  //         this.remove();
-  //       });
-  //     });
-
-  //     // rect.on("element:pointerclick", () => handleOpenPopover(factor));
-  //     graphRef.current.graph.addCells(rect);
-  //     console.log("Graph is: ", JSON.stringify(graphRef.current.graph));
-  //     setLastRectPosition({ x: newX, y: newY });
-
-  //     setAddedFactors([...addedFactors, factor._id]);
-  //     handleOpenPopover(rect);
-  //   }
-  // };
   const addRectangleToGraph = (factor) => {
     if (addedFactors.includes(factor._id)) {
       alert(`${factor.name} is already added to the canvas.`);
@@ -1441,14 +1325,7 @@ const Home = () => {
 
     // Update state with modified rectangle
     setSelectedRectangle(updatedRectangle);
-
-    // Optionally update selectedFactorData if needed
     setSelectedFactorData(updatedFactorData);
-
-    console.log("Updated Rectangle:", updatedRectangle);
-    console.log("Updated Factor Data:", updatedFactorData);
-
-    // Close chart after saving changes
     setIsChartVisible(false);
   };
 
@@ -1751,52 +1628,7 @@ const Home = () => {
               </div>
             )}
           </Box>
-          <Box
-            sx={{
-              display: "flex",
-              flexWrap: "wrap",
-              marginX: "6px",
-              margin: "3px",
-              border: "0.5px solid #a19b9b",
-              borderRadius: "10px",
-              paddingTop: "6px",
-              padding: "12px",
-              backgroundColor: "#F4C2C2",
-              gap: "4px",
-            }}
-          >
-            <Typography
-              sx={{
-                color: "black",
-                textAlign: "left",
-                width: "100%",
-                padding: "8px",
-                // background: "#f57c7c",
-                borderRadius: "8px",
-                marginBottom: "16px",
-              }}
-            >
-              Target Factors
-            </Typography>
-            {targetVariables.map((variable) => (
-              <Tooltip
-                key={variable._id}
-                title={variable.description} // Display the factor's description
-                placement="right" // Adjust placement as needed (top, bottom, left, right)
-                arrow // Add an arrow to the tooltip
-              >
-                <CustomButton
-                  key={variable._id}
-                  onClick={() => {
-                    setSelectedTarget(variable.name);
-                    addRectangleToGraph(variable);
-                  }}
-                >
-                  {variable.name}
-                </CustomButton>
-              </Tooltip>
-            ))}
-          </Box>
+
           <Box
             sx={{
               display: "flex",
@@ -1840,7 +1672,7 @@ const Home = () => {
                   gap: "4px", // Space between items
                 }}
               >
-                {adminFactors.map((factor) => (
+                {combinedFactors.map((factor) => (
                   <Tooltip
                     key={factor._id}
                     title={factor.description} // Display the factor's description
@@ -2077,6 +1909,10 @@ const Home = () => {
             <ResizableChartComponent
               factorData={selectedFactorData}
               factorName={selectedFactorName}
+              factorUnit={selectedFactorUnit}
+              predictionSeries={Object.values(
+                predictionSeries[selectedFactorName] || {}
+              )}
               onClose={() => setIsChartVisible(false)}
               onSave={handleSaveChanges}
             />

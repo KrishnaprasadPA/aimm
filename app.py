@@ -183,27 +183,10 @@ def add_factors():
     factorname = data.get('name')
     description = data.get('description')
     color = data.get('color')
-    time_series = [float(x) for x in data.get('timeSeries', [])]  # Assuming timeSeries is an array of 25 values
+    time_series_data = data.get('time_series_data', [])
 
     if factors_collection.find_one({"name": factorname}):
         return jsonify({"message": "Factor name already exists"}), 400
-
-    # Prepare time series data
-    time_series_data = []
-    years = range(1993, 2035)  # 43 years from 1993 to 2035
-
-    if len(time_series) == 43:
-        # Calculate normalized values
-        min_value = min(time_series)
-        max_value = max(time_series)
-        normalized_values = [x for x in time_series]
-
-        for year, value, normalized_value in zip(years, time_series, normalized_values):
-            time_series_data.append({
-                "year": year,
-                "value": value,
-                "normalized_value": normalized_value
-            })
 
     new_factor = {
         "name": factorname,
@@ -221,6 +204,7 @@ def add_factors():
         return jsonify({"message": "Factor added successfully"}), 201
     else:
         return jsonify({"message": "Failed to add factor"}), 500
+
 
 
 @app.route('/api/models', methods=['GET'])
