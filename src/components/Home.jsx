@@ -389,6 +389,13 @@ const Home = () => {
       document.getElementById("context-delete").onclick = () => {
         const factorId = elementView.model.attributes.factor._id;
         setAddedFactors((prev) => prev.filter((id) => id !== factorId));
+        const factorName = elementView.model.attributes.factor.name;
+        setPredictionSeries((prev) => {
+          const updated = { ...prev };
+          delete updated[factorName];
+          return updated;
+        });
+
         elementView.model.remove();
         removeMenu();
       };
@@ -851,6 +858,7 @@ const Home = () => {
 
     try {
       setIsLoading(true);
+      setPredictionSeries({}); // Clears all previous predictions
       const response = await axios.post(`${apiUrl}/api/predict`, graphData);
       const { predicted_values, model_quality } = response.data;
 
