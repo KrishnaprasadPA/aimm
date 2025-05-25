@@ -471,7 +471,6 @@ const Home = () => {
       try {
         // Load duplicated graph data into JointJS
         graph.fromJSON(duplicatedGraphData);
-        console.log("Inside if block");
       } catch (error) {
         console.error("Error loading duplicated graph:", error);
       }
@@ -525,23 +524,17 @@ const Home = () => {
     const factorUnit = element.attributes.factor.unit;
 
     setSelectedFactorData(timeSeriesData);
-    console.log("Time series data is: ", timeSeriesData);
 
     setselectedFactorName(factorName);
-    console.log("Selected factor is : ", factorName);
 
     setselectedFactorUnit(factorUnit);
-    console.log("Selected unit is : ", factorUnit);
 
     setSelectedRectangle(element);
-    console.log("Selected rectangle is: ", element);
 
     setIsChartVisible(true);
-    console.log("Chart visible is: ", isChartVisible);
   };
 
   const handleAddSuccess = () => {
-    console.log("Factor added to the system.");
     loadFactors();
     // Update any additional state if needed.
   };
@@ -575,7 +568,6 @@ const Home = () => {
       setModelName("");
       setModelQuality("Not trained yet");
       setIsEditingOwnModel(false); // Reset to false
-      console.log("Graph cleared");
     }
   };
 
@@ -606,7 +598,6 @@ const Home = () => {
     try {
       const response = await axios.get(`${apiUrl}/api/target`);
       setTargetVariables(response.data);
-      console.log();
     } catch (error) {
       console.error("Error loading target variables:", error);
     }
@@ -627,7 +618,6 @@ const Home = () => {
   };
 
   const combinedFactors = [
-    ...targetVariables,
     ...adminFactors.filter(
       (af) => !targetVariables.some((tv) => tv._id === af._id)
     ),
@@ -686,7 +676,6 @@ const Home = () => {
   // };
 
   const handleDeleteModel = async (modelId) => {
-    console.log("This is the modelId: ", modelId);
     try {
       await axios.delete(`${apiUrl}/api/models/delete/${modelId}`);
       setUserModels(userModels.filter((model) => model.id !== modelId));
@@ -753,7 +742,6 @@ const Home = () => {
           weight: cell.attributes.weight || 1, // Default weight is 1
           trainable: cell.attributes.trainable || true, // Default trainable is true
         });
-        console.log("The trainable value is: ", cell.attributes.trainable);
       } else if (cell.isElement()) {
         // Extract factor details
         const factorName = cell.attributes.attrs.label.text;
@@ -783,10 +771,7 @@ const Home = () => {
     setIsLoading(true);
     try {
       const response = await axios.post(`${apiUrl}/api/retrain`, graphData);
-      console.log("Graph data is : ", graphData);
       const { updated_links, model_quality } = response.data; // Destructure the response
-
-      console.log("response.data: ", response.data);
 
       if (!updated_links || !Array.isArray(updated_links)) {
         throw new Error("Invalid updated weights received from the server.");
@@ -838,8 +823,6 @@ const Home = () => {
     }
 
     const graphData = extractGraphData(graph);
-
-    console.log("Extracted Graph Data:", graphData);
 
     // Send data to backend or process further
     retrainModel(graphData);
@@ -943,6 +926,7 @@ const Home = () => {
   };
 
   const addRectangleToGraph = (factor) => {
+    console.log("Added factor is:", factor);
     if (addedFactors.includes(factor._id)) {
       alert(`${factor.name} is already added to the canvas.`);
       return;
@@ -1140,8 +1124,6 @@ const Home = () => {
               strokeWidth: linkModal.getLinkThickness(updatedData.weight), // Use the helper function
             },
           });
-
-          console.log("Updated link data:", updatedData);
         });
       },
     });
@@ -1222,7 +1204,6 @@ const Home = () => {
 
     // Access the username from the retrieved object
     const userId = loggedUser ? loggedUser.id : null;
-    console.log("logged user is: ", loggedUser);
 
     const coreData = {
       name: modelName,
@@ -1303,7 +1284,6 @@ const Home = () => {
       const result = await response.json();
 
       if (response.ok) {
-        console.log("Model saved successfully:", result);
         alert("Model saved successfully!");
         if (!isEditingOwnModel) {
           // If it's a new model, reload the models
@@ -1320,6 +1300,8 @@ const Home = () => {
   };
 
   const handleSaveChanges = (updatedFactorData) => {
+    const years = updatedFactorData.map((d) => d.year);
+    console.log("Saved years:", years); // Check if 1993 sneaks in here
     const updatedRectangle = { ...selectedRectangle };
     updatedRectangle.attributes.factor.time_series_data = updatedFactorData;
 
