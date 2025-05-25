@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from ddml import run_analysis 
 
-def generate_synthetic_time_series(start_year=1993, end_year=2035, n_factors=3, seed=42):
+def generate_synthetic_time_series(start_year=1994, end_year=2035, n_factors=3, seed=42):
     np.random.seed(seed)
     years = list(range(start_year, end_year + 1))
     n_years = len(years)

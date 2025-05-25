@@ -102,7 +102,7 @@ def estimate_causal_effects(factors: Dict, links: List[Dict], lag_years: int = 5
 def calculate_model_quality(updated_links: List[Dict]) -> float:
     trainable_links = [link for link in updated_links if link.get("trainable", False)]
     effect_validity = sum(1 for link in trainable_links if abs(link.get("weight", 0)) < 2.0) / max(1, len(trainable_links))
-    data_coverage = sum(link.get("years_used", 0) for link in trainable_links) / (len(trainable_links) * 43) if trainable_links else 1.0
+    data_coverage = sum(link.get("years_used", 0) for link in trainable_links) / (len(trainable_links) * 42) if trainable_links else 1.0
     estimation_success = sum(1 for link in trainable_links if link.get("error") is None) / max(1, len(trainable_links))
 
     quality = (0.3 * effect_validity + 0.2 * 1.0 + 0.2 * data_coverage + 0.3 * estimation_success) * 100

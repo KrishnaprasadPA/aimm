@@ -361,6 +361,7 @@ def retrain_model():
 def predict_future_values():
     try:
         graph_data = request.get_json()
+        print(graph_data)
         result = run_forecast(graph_data)
         return jsonify(result), 200
     except Exception as e:

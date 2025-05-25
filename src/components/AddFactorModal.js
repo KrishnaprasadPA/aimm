@@ -49,7 +49,7 @@ const AddFactorModal = ({ onClose, onAddSuccess }) => {
   const [newFactor, setNewFactor] = useState({
     name: "",
     description: "",
-    timeSeries: Array(43).fill(null), // 1993–2035
+    timeSeries: Array(42).fill(null), // 1994–2035
     color: "#975c5c",
   });
 
@@ -62,7 +62,7 @@ const AddFactorModal = ({ onClose, onAddSuccess }) => {
   const [startValue, setStartValue] = useState("");
   const [endValue, setEndValue] = useState("");
 
-  const years = Array.from({ length: maxYear - 1993 + 1 }, (_, i) => 1993 + i);
+  const years = Array.from({ length: maxYear - 1994 + 1 }, (_, i) => 1994 + i);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -278,7 +278,7 @@ const AddFactorModal = ({ onClose, onAddSuccess }) => {
           </div>
           {activeTab === "table" ? (
             <div className="form-group">
-              <h3>Time Series Data (1993–{maxYear})</h3>
+              <h3>Time Series Data (1994–{maxYear})</h3>
               <div className="time-series-grid">
                 {years.map((year, index) => (
                   <div key={year} className="year-input">
