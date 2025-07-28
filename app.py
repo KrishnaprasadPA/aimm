@@ -207,28 +207,84 @@ def add_factors():
 
 
 
+# @app.route('/api/models', methods=['GET'])
+# def get_models():
+#     models = list(models_collection.find({"deleted": False}))
+#     users = list(users_collection.find({}, {"_id": 1, "level": 1}))
+#     user_levels = {str(user['_id']): user['level'] for user in users}
+
+#     grouped_models = {}
+#     for model in models:
+#         user_id = str(model.get('creator'))  # Assuming 'creator' is a user_id
+#         user_level = user_levels.get(user_id, "Unknown")
+
+#         if user_level not in grouped_models:
+#             grouped_models[user_level] = []
+#         grouped_models[user_level].append({
+#             "name": model["name"],
+#             "quality": model.get("quality", "Not trained"),
+#             "links": model.get("links", []),
+#             "target_factor": model.get("target_factor"),
+#             "graph_data": model.get("graph_data", [])
+#         })
+#     print(jsonify(grouped_models))
+#     return jsonify(grouped_models)
 @app.route('/api/models', methods=['GET'])
-def get_models():
-    models = list(models_collection.find({"deleted": False}))
+def get_models_summary():
+    """
+    Returns a summary of all models, excluding large graph_data.
+    """
+    models = list(models_collection.find({"deleted": False}, {"graph_data": 0})) # Exclude graph_data
     users = list(users_collection.find({}, {"_id": 1, "level": 1}))
     user_levels = {str(user['_id']): user['level'] for user in users}
 
     grouped_models = {}
     for model in models:
-        user_id = str(model.get('creator'))  # Assuming 'creator' is a user_id
+        user_id = str(model.get('creator')) # Assuming 'creator' is a user_id
         user_level = user_levels.get(user_id, "Unknown")
 
         if user_level not in grouped_models:
             grouped_models[user_level] = []
-        grouped_models[user_level].append({
+
+        # Prepare summary data for the list view
+        model_summary = {
+            "id": str(model["_id"]), # Crucial for fetching full details later
             "name": model["name"],
             "quality": model.get("quality", "Not trained"),
-            "links": model.get("links", []),
-            "target_factor": model.get("target_factor"),
-            "graph_data": model.get("graph_data", [])
-        })
-    print(jsonify(grouped_models))
+            # NO "graph_data" here
+        }
+        print(jsonify(grouped_models))
+
+        grouped_models[user_level].append(model_summary)
+
+    # print(jsonify(grouped_models)) # Uncomment for debugging if needed
     return jsonify(grouped_models)
+
+@app.route('/api/models/<model_id>', methods=['GET'])
+def get_model_details(model_id):
+    """
+    Returns the full details of a single model, including graph_data.
+    """
+    try:
+        # Convert model_id string to ObjectId for MongoDB query
+        model = models_collection.find_one({"_id": ObjectId(model_id), "deleted": False})
+
+        if model:
+            # Convert ObjectId fields to string for JSON serialization
+            model_data = {
+                "id": str(model["_id"]),
+                "name": model["name"],
+                "quality": model.get("quality", "Not trained"),
+                "links": model.get("links", []),
+                "target_factor": model.get("target_factor"),
+                "graph_data": model.get("graph_data", "{}") # Ensure it's always a string, default to empty JSON string
+            }
+            return jsonify(model_data)
+        else:
+            return jsonify({"error": "Model not found"}), 404
+    except Exception as e:
+        # Handle invalid ObjectId format or other database errors
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/models/user', methods=['GET'])
 def get_user_models():

@@ -321,7 +321,14 @@ const Home = () => {
         end,
         linkView
       ) {
-        return magnetS !== magnetT;
+        if (cellViewS === cellViewT) {
+          return false;
+        }
+
+        if (!cellViewT.model.isElement()) {
+          return false;
+        }
+        return true;
       },
     });
 
@@ -539,10 +546,27 @@ const Home = () => {
     // Update any additional state if needed.
   };
 
-  const handleVisualize = (model) => {
-    if (model) {
-      setSelectedModel(model);
+  // const handleVisualize = (model) => {
+  //   if (model) {
+  //     setSelectedModel(model);
+  //     setShowVisualization(true);
+  //   }
+  // };
+  const handleVisualize = async (modelSummary) => {
+    // modelSummary now contains `id`, `name`, `quality`, etc., but NOT `graph_data`
+    setIsLoading(true); // Start loading for visualization
+    try {
+      // Make a new API call to get the full model details, including graph_data
+      const response = await axios.get(
+        `${apiUrl}/api/models/${modelSummary.id}`
+      );
+      setSelectedModel(response.data); // This `response.data` now includes `graph_data`
       setShowVisualization(true);
+    } catch (error) {
+      console.error("Error fetching model details for visualization:", error);
+      // You might want to show a user-friendly error message here
+    } finally {
+      setIsLoading(false); // End loading
     }
   };
 
@@ -623,9 +647,29 @@ const Home = () => {
     ),
   ];
 
+  // const loadModels = async () => {
+  //   try {
+  //     const response = await axios.get(`${apiUrl}/api/models`);
+  //     if (response.data && typeof response.data === "object") {
+  //       setModelLevels(
+  //         Object.keys(response.data).map((levelKey) => ({
+  //           level: parseInt(levelKey, 10),
+  //           models: response.data[levelKey],
+  //         }))
+  //       );
+  //     } else {
+  //       console.error("Unexpected API response format:", response.data);
+  //       setModelLevels([]);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error loading models:", error);
+  //     setModelLevels([]);
+  //   }
+  // };
   const loadModels = async () => {
+    setIsLoading(true); // Start loading
     try {
-      const response = await axios.get(`${apiUrl}/api/models`);
+      const response = await axios.get(`${apiUrl}/api/models`); // This now hits the summary endpoint
       if (response.data && typeof response.data === "object") {
         setModelLevels(
           Object.keys(response.data).map((levelKey) => ({
@@ -638,8 +682,10 @@ const Home = () => {
         setModelLevels([]);
       }
     } catch (error) {
-      console.error("Error loading models:", error);
+      console.error("Error loading models summary:", error);
       setModelLevels([]);
+    } finally {
+      setIsLoading(false); // End loading
     }
   };
 
