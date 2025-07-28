@@ -1129,6 +1129,14 @@ const Home = () => {
     }
   };
 
+  const truncateName = (name, maxLength) => {
+    if (!name) return ""; // Handle null or undefined names
+    if (name.length <= maxLength) {
+      return name;
+    }
+    return name.substring(0, maxLength) + "..";
+  };
+
   function showLinkTools(linkView) {
     var infoButton = new joint.linkTools.Button({
       markup: [
@@ -1477,7 +1485,7 @@ const Home = () => {
                                   fontWeight: "500",
                                 }}
                               >
-                                {model.name}
+                                {truncateName(model.name, 15)}
                               </Typography>
                               <Box sx={{ display: "flex", gap: "4px" }}>
                                 {/* View Button */}
@@ -2079,7 +2087,7 @@ const Home = () => {
                           fontFamily: "Nunito Sans, sans-serif",
                         }}
                       >
-                        {model.name}
+                        {truncateName(model.name, 25)}
                       </Typography>
                       <Box
                         sx={{
