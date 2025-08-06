@@ -1025,6 +1025,9 @@ const Home = () => {
           {
             tagName: "text",
             selector: "label",
+            attributes: {
+              'xml:space': 'preserve',
+            },
           },
           {
             tagName: "rect",
@@ -1044,7 +1047,12 @@ const Home = () => {
       });
 
       rect.position(newX, newY);
-      rect.resize(120, 40);
+      // rect.resize(120, 40);
+      const fixedWidth = 140;
+      const approxCharsPerLine = 18;
+      const lines = Math.ceil(factor.name.length / approxCharsPerLine);
+      const height = 20 + lines * 14; // dynamic height for multiple lines
+      rect.resize(fixedWidth, height);
       rect.attr({
         body: {
           fill: rectColor,
@@ -1061,6 +1069,13 @@ const Home = () => {
           refY: "50%",
           textAnchor: "middle",
           yAlignment: "middle",
+          lineHeight: 14,
+          textWrap: {
+            width: fixedWidth - 10,
+            height: height,
+            ellipsis: false,
+            breakWords: false, // 👈 do NOT break words
+          },
         },
         deleteButton: {
           refX: "100%",
