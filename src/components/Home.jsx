@@ -1026,7 +1026,7 @@ const Home = () => {
             tagName: "text",
             selector: "label",
             attributes: {
-              'xml:space': 'preserve',
+              "xml:space": "preserve",
             },
           },
           {
@@ -1354,8 +1354,23 @@ const Home = () => {
 
       if (response.ok) {
         alert("Model saved successfully!");
+
+        // ✅ NEW CODE: Update selectedModel with the returned model_id after first save
+        if (!isEditingOwnModel && result.model_id) {
+          // This was a new model save, so update selectedModel with the new ID
+          setSelectedModel({
+            ...selectedModel,
+            id: result.model_id,
+            name: modelName,
+            quality: modelQuality,
+            target_factor: selectedTarget,
+            graph_data: JSON.stringify(graph), // Store the current graph data
+          });
+          setIsEditingOwnModel(true); // Now we're editing this model
+        }
+
         if (!isEditingOwnModel) {
-          // If it's a new model, reload the models
+          // If it's a new model, reload the models list
           loadUserModels(userId);
         }
       } else {

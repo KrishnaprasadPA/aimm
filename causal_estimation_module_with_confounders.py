@@ -68,6 +68,42 @@ def prepare_self_link_panel(target_series, lag_years=5):
 
     return panel_df
 
+def normalize_weights(updated_links: List[Dict]) -> List[Dict]:
+    """Normalize weights to be between -1 and 1 using min-max scaling"""
+    # Extract weights from links that don't have errors
+    weights = []
+    valid_indices = []
+    
+    for i, link in enumerate(updated_links):
+        if link.get("error") is None and "weight" in link:
+            weights.append(link["weight"])
+            valid_indices.append(i)
+    
+    if len(weights) == 0:
+        return updated_links
+    
+    # Convert to numpy array for easier computation
+    weights = np.array(weights)
+    
+    # Find min and max weights
+    min_weight = np.min(weights)
+    max_weight = np.max(weights)
+    
+    if min_weight == max_weight:
+        # All weights are the same, set them all to 0
+        normalized_weights = np.zeros_like(weights)
+    else:
+        # Min-max normalization to [-1, 1] range
+        # Formula: 2 * (x - min) / (max - min) - 1
+        normalized_weights = 2 * (weights - min_weight) / (max_weight - min_weight) - 1
+    
+    # Update the links with normalized weights
+    for i, norm_weight in zip(valid_indices, normalized_weights):
+        updated_links[i]["weight"] = round(float(norm_weight), 4)
+        updated_links[i]["original_weight"] = round(float(weights[valid_indices.index(i)]), 4)
+    
+    return updated_links
+
 
 
 def estimate_causal_effects(factors: Dict, links: List[Dict], lag_years=5) -> List[Dict]:
@@ -125,8 +161,8 @@ def estimate_causal_effects(factors: Dict, links: List[Dict], lag_years=5) -> Li
                 model.fit(Y, T, X=X, groups=groups, inference='auto')
 
             effect = float(np.mean(model.effect(X=X)))
-            effect = max(min(effect, 5.0), -5.0)  # clamp between -5 and 5
-
+            # Remove the capping here - let the raw effect through
+            
             current_link.update({
                 "weight": round(effect, 4),
                 "years_used": len(panel_df['year'].unique()),
@@ -140,6 +176,7 @@ def estimate_causal_effects(factors: Dict, links: List[Dict], lag_years=5) -> Li
         updated_links.append(current_link)
 
     return updated_links
+
 def estimate_self_link(factors: Dict, target: str, lag_years=5) -> Dict:
     try:
         print(f"\n==== Estimating SELF-LOOP for Target: {target} ====")
@@ -166,8 +203,8 @@ def estimate_self_link(factors: Dict, target: str, lag_years=5) -> Dict:
             model.fit(Y, T, X=None, groups=groups)
 
         effect = float(np.mean(model.effect()))
-        effect = max(min(effect, 5.0), -5.0)
-
+        # Remove the capping here too
+        
         return {
             "startFactor": target,
             "endFactor": target,
@@ -188,9 +225,6 @@ def estimate_self_link(factors: Dict, target: str, lag_years=5) -> Dict:
             "error": str(e)
         }
 
-
-
-
 def run_analysis(graph_data: Dict) -> Dict:
     try:
         if not all(k in graph_data for k in ['factors', 'links', 'selectedTarget']):
@@ -206,6 +240,8 @@ def run_analysis(graph_data: Dict) -> Dict:
         self_link = estimate_self_link(factors, selected_target, lag_years=5)
         updated_links.append(self_link)
 
+        # NEW: Normalize all weights
+        updated_links = normalize_weights(updated_links)
 
         return {
             "updated_links": updated_links,
