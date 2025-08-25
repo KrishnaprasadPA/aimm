@@ -121,7 +121,6 @@ def forgot_password():
                   recipients=[email])
     msg.body = f"Click the link to reset your password: {reset_link}"
     mail.send(msg)
-    print(reset_link)
 
     return jsonify({"message": "If the email exists, a reset link has been sent."}), 200
 
@@ -131,9 +130,6 @@ def reset_password():
     data = request.get_json()
     token = data.get('token')
     new_password = data.get('password')
-
-    print("Token is : ", token)
-    print("Expiry time is: ", datetime.utcnow)
 
     # Find user by token and check expiry
     user = users_collection.find_one({
@@ -229,6 +225,17 @@ def add_factors():
 #         })
 #     print(jsonify(grouped_models))
 #     return jsonify(grouped_models)
+
+@app.route('/api/user_levels', methods=['GET'])
+def get_user_levels():
+    try:
+        levels = users_collection.distinct("level")
+        sorted_levels = sorted(levels)
+        return jsonify(sorted_levels), 200
+    except Exception as e:
+        print(f"Error fetching user levels: {e}")
+        return jsonify({"error": "An error occurred while fetching user levels."}), 500
+
 @app.route('/api/models', methods=['GET'])
 def get_models_summary():
     """
@@ -253,7 +260,7 @@ def get_models_summary():
             "quality": model.get("quality", "Not trained"),
             # NO "graph_data" here
         }
-        print(jsonify(grouped_models))
+        # print(jsonify(grouped_models))
 
         grouped_models[user_level].append(model_summary)
 
@@ -310,78 +317,77 @@ def get_user_models():
 @app.route('/api/models', methods=['POST'])
 def save_model():
     try:
-        # Parse the JSON request data
         data = request.get_json()
-        # Validate required fields
-        required_fields = ["name", "description", "links", "target_factor", "creator"]
+        required_fields = ["name", "description", "links", "target_factor", "creator", "adjacency_matrix"]
         for field in required_fields:
-            if not (field in data):
-                print("Data is missing: ", field)
-                return jsonify({"error": "Missing required fields"}), 400
+            if field not in data:
+                return jsonify({"error": f"Missing required field: {field}"}), 400
 
-        # Construct the model document
+        # The creator ID from the frontend is a string. Use it directly.
+        creator_id_str = data["creator"]
+
+        # Check for existing models with the same name and creator (as a string)
+        existing_model = models_collection.find_one({
+            "name": data["name"],
+            "creator": creator_id_str
+        })
+        if existing_model:
+            return jsonify({"error": "A model with this name already exists."}), 409
+
         model = {
             "name": data["name"],
             "description": data["description"],
-            "links": data.get("links", []),  # Default to an empty list if not provided
+            "links": data.get("links", []),
             "target_factor": data["target_factor"],
-            "creator": data["creator"],  # Convert creator ID to ObjectId if provided as a string
-            "quality": data.get("quality", None),  # Optional field, default is None
+            "creator": creator_id_str, # Save the creator ID as a string
+            "quality": data.get("quality", None),
             "graph_data": data.get("graphData"),
-            "deleted": data.get("deleted", False)  # Optional, defaults to False
+            "deleted": data.get("deleted", False),
+            "adjacency_matrix": data.get("adjacency_matrix")
         }
 
-        # Insert the model into the database
-        try:
-            result = models_collection.insert_one(model)
-            model_id = str(result.inserted_id)
-        except Exception as e:
-            print("error: ", e)
+        result = models_collection.insert_one(model)
+        model_id = str(result.inserted_id)
 
         return jsonify({"message": "Model created successfully", "model_id": model_id}), 201
 
     except Exception as e:
         print("Error creating model:", e)
         return jsonify({"error": "An error occurred while creating the model."}), 500
-    
+
 @app.route('/api/models/update/<model_id>', methods=['PUT'])
 def update_model(model_id):
     try:
-        # Parse the JSON request data
         data = request.get_json()
-        # Validate required fields
-        required_fields = ["name", "description", "links", "target_factor", "creator"]
-        for field in required_fields:
-            if not (field in data):
-                print("Data is missing: ", field)
-                return jsonify({"error": "Missing required fields"}), 400
+        if not ObjectId.is_valid(model_id):
+            return jsonify({"error": "Invalid model ID format"}), 400
 
-        # Construct the model document
-        model = {
+        update_data = {
             "name": data["name"],
             "description": data["description"],
-            "links": data.get("links", []),  # Default to an empty list if not provided
+            "links": data.get("links", []),
             "target_factor": data["target_factor"],
-            "creator": data["creator"],  # Convert creator ID to ObjectId if provided as a string
-            "quality": data.get("quality", None),  # Optional field, default is None
+            "quality": data.get("quality", None),
             "graph_data": data.get("graphData"),
-            "deleted": data.get("deleted", False)  # Optional, defaults to False
+            "deleted": data.get("deleted", False),
+            "adjacency_matrix": data.get("adjacency_matrix")
         }
 
-        # Update the model in the database
-        result = models_collection.update_one({"_id": ObjectId(model_id)}, {"$set": model})
+        result = models_collection.update_one(
+            {"_id": ObjectId(model_id)},
+            {"$set": update_data}
+        )
         if result.matched_count == 0:
             return jsonify({"error": "Model not found"}), 404
 
         return jsonify({"message": "Model updated successfully"}), 200
 
     except Exception as e:
-        print("Error updating model:", e)
+        print(f"Error updating model: {e}")
         return jsonify({"error": "An error occurred while updating the model."}), 500
 
 @app.route('/api/models/delete/<model_id>', methods=['DELETE'])
 def delete_model(model_id):
-    print(model_id)
     try:
         # Update the `deleted` field of the specified model to True
         result = models_collection.update_one(
@@ -424,6 +430,173 @@ def predict_future_values():
         print("Prediction error:", e)
         return jsonify({"error": str(e)}), 500
 
+def generate_adjacency_matrix_from_links(links_list):
+    try:
+        all_factors = set()
+        for link in links_list:
+            all_factors.add(link["start_factor"])
+            all_factors.add(link["end_factor"])
+        
+        factors_list = list(all_factors)
+        adj_matrix = {from_f: {to_f: 0 for to_f in factors_list} for from_f in factors_list}
+
+        for link in links_list:
+            start_factor = link["start_factor"]
+            end_factor = link["end_factor"]
+            weight = link.get("weight", 1)
+            
+            if start_factor in adj_matrix and end_factor in adj_matrix[start_factor]:
+                adj_matrix[start_factor][end_factor] = weight
+        
+        return adj_matrix
+    except Exception as e:
+        print(f"Error generating matrix from links data: {e}")
+        return None
+def get_user_ids_by_level(level):
+    """
+    Retrieves a list of MongoDB user IDs for a given user level,
+    converted to string format.
+    """
+    print(f"DEBUG: Attempting to get user IDs for level: {level}")
+    user_ids = []
+    try:
+        # Convert the incoming integer 'level' to a string to match the database's data type
+        level_str = str(level)
+        print(f"DEBUG: Querying for level as string: {level_str}")
+
+        users_cursor = users_collection.find(
+            {"level": level_str}, # <-- Corrected to use the string version
+            {"_id": 1}
+        )
+        for user in users_cursor:
+            user_ids.append(str(user["_id"]))
+    except Exception as e:
+        print(f"ERROR: Failed to fetch user IDs for level {level}: {e}")
+        return []
+    
+    print(f"DEBUG: Found {len(user_ids)} users for level {level}. IDs: {user_ids}")
+    return user_ids
+
+@app.route('/api/models/aggregate/<int:user_level>', methods=['GET'])
+def get_aggregated_matrix(user_level):
+    try:
+        print(f"DEBUG: Endpoint /api/models/aggregate/{user_level} called.")
+        user_ids_in_level = get_user_ids_by_level(user_level)
+        
+        # Check if user IDs were found for the level
+        if not user_ids_in_level:
+            print(f"DEBUG: No users found for level {user_level}. Returning empty matrix.")
+            return jsonify({
+                "aggregated_matrix": {},
+                "summary": {
+                    "user_level": user_level,
+                    "num_models": 0,
+                    "num_factors": 0,
+                    "num_links": 0
+                }
+            }), 200
+
+        # Query the database for models
+        print(f"DEBUG: Querying for models with creator IDs: {user_ids_in_level}")
+        models_cursor = models_collection.find(
+            {"creator": {"$in": user_ids_in_level}},
+            {"adjacency_matrix": 1, "links": 1}
+        )
+        
+        # Check how many models are found by the query
+        models_list = list(models_cursor)
+        print(f"DEBUG: Found {len(models_list)} models matching the query.")
+        
+        if len(models_list) == 0:
+            return jsonify({
+                "aggregated_matrix": {},
+                "summary": {
+                    "user_level": user_level,
+                    "num_models": 0,
+                    "num_factors": 0,
+                    "num_links": 0
+                }
+            }), 200
+        
+        # Reset the cursor for the aggregation loop
+        models_cursor = models_collection.find(
+            {"creator": {"$in": user_ids_in_level}},
+            {"adjacency_matrix": 1, "links": 1}
+        )
+
+        sum_matrix = {}
+        count_matrix = {}
+        all_factors = set()
+        
+        # Start the aggregation loop
+        print("DEBUG: Starting aggregation loop.")
+        for model in models_cursor:
+            adj_matrix = None
+            adj_matrix_str = model.get("adjacency_matrix")
+
+            if adj_matrix_str:
+                print(f"DEBUG: Found adjacency_matrix for model {model['_id']}. Parsing...")
+                adj_matrix = json.loads(adj_matrix_str)
+            elif model.get("links"):
+                print(f"DEBUG: No adjacency_matrix. Generating from links for model {model['_id']}...")
+                adj_matrix = generate_adjacency_matrix_from_links(model["links"])
+
+            if not adj_matrix:
+                print(f"WARNING: Could not find or generate matrix for model {model['_id']}. Skipping.")
+                continue
+
+            current_factors = list(adj_matrix.keys())
+            all_factors.update(current_factors)
+            
+            # Print details about the current matrix being processed
+            print(f"DEBUG: Processing matrix for model {model['_id']} with factors: {current_factors}")
+            for from_factor, to_links in adj_matrix.items():
+                for to_factor, weight in to_links.items():
+                    if weight != 0:
+                        # Print each non-zero weight being aggregated
+                        print(f"DEBUG: Aggregating link from '{from_factor}' to '{to_factor}' with weight {weight}")
+                        
+                        if from_factor not in sum_matrix:
+                            sum_matrix[from_factor] = {}
+                            count_matrix[from_factor] = {}
+                        if to_factor not in sum_matrix[from_factor]:
+                            sum_matrix[from_factor][to_factor] = 0
+                            count_matrix[from_factor][to_factor] = 0
+                            
+                        sum_matrix[from_factor][to_factor] += weight
+                        count_matrix[from_factor][to_factor] += 1
+        
+        # Final aggregation logic
+        print("DEBUG: Calculating final aggregated matrix...")
+        aggregated_matrix = {factor: {f: 0 for f in all_factors} for factor in all_factors}
+        
+        for from_factor, to_links in sum_matrix.items():
+            for to_factor, total_sum in to_links.items():
+                if count_matrix.get(from_factor, {}).get(to_factor, 0) > 0:
+                    average_weight = total_sum / count_matrix[from_factor][to_factor]
+                    aggregated_matrix[from_factor][to_factor] = average_weight
+        
+        num_models = models_collection.count_documents({"creator": {"$in": user_ids_in_level}})
+        num_links = sum(sum(1 for w in row.values() if w != 0) for row in aggregated_matrix.values())
+        
+        summary = {
+            "user_level": user_level,
+            "num_models": num_models,
+            "num_factors": len(all_factors),
+            "num_links": num_links
+        }
+        
+        print(f"DEBUG: Final Aggregation Summary: {summary}")
+        print(f"DEBUG: Final Aggregated Matrix: {aggregated_matrix}")
+        
+        return jsonify({
+            "aggregated_matrix": aggregated_matrix,
+            "summary": summary
+        }), 200
+
+    except Exception as e:
+        print(f"ERROR: Unhandled exception during aggregation: {e}")
+        return jsonify({"error": "An error occurred while aggregating models."}), 500
 
 if __name__ == '__main__':
     if os.getenv('ENVIRONMENT')== 'LOCAL':

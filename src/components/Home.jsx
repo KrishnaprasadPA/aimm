@@ -22,6 +22,10 @@ import LoadingSpinner from "./LoadingSpinner";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import SummaryModal from "./SummaryModal";
+import factorAliases from "./factorAliases";
+import AggMatrixModal from "./AggMatrixModal.js";
+import LevelsModal from "./LevelsModal.js";
 
 import {
   Avatar,
@@ -220,6 +224,8 @@ const Home = () => {
   const [selectedData, setSelectedData] = useState(null);
   const [addedFactors, setAddedFactors] = useState([]);
   const [isRightCollapsed, setIsRightCollapsed] = useState(false);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [summaryData, setSummaryData] = useState(null);
 
   const [sourceElement, setSourceElement] = React.useState(null);
   const [sourcePort, setSourcePort] = React.useState(null);
@@ -231,6 +237,7 @@ const Home = () => {
 
   const graphRef = useRef(null);
   const paperRef = useRef(null);
+  const scrollerRef = useRef(null);
   // const chartRef = useRef(null);
   const [selectedElements, setSelectedElements] = React.useState([]);
   const linkModal = new LinkModal();
@@ -249,6 +256,42 @@ const Home = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isEditingOwnModel, setIsEditingOwnModel] = useState(false);
   const [predictionSeries, setPredictionSeries] = useState({});
+  const [showLevelsModal, setShowLevelsModal] = useState(false);
+  const [showAggMatrixModal, setShowAggMatrixModal] = useState(false);
+  const [aggMatrixData, setAggMatrixData] = useState(null);
+  const [userLevels, setUserLevels] = useState([]);
+
+  const fetchUserLevels = async () => {
+    try {
+      const response = await axios.get(`${apiUrl}/api/user_levels`);
+      setUserLevels(response.data);
+    } catch (error) {
+      console.error("Error fetching user levels:", error);
+    }
+  };
+
+  // Add this useEffect hook to call the new function when the component mounts
+  useEffect(() => {
+    fetchUserLevels();
+  }, []);
+
+  // New handler to fetch the aggregated matrix for a selected level
+  const handleLevelClick = async (level) => {
+    setShowLevelsModal(false); // Close the first modal
+    setIsLoading(true); // Show a loading spinner while fetching
+    try {
+      const response = await axios.get(
+        `${apiUrl}/api/models/aggregate/${level}`
+      );
+      setAggMatrixData(response.data);
+      setShowAggMatrixModal(true); // Open the second modal
+    } catch (error) {
+      console.error("Error fetching aggregated matrix:", error);
+      alert("An error occurred while fetching the aggregated matrix.");
+    } finally {
+      setIsLoading(false); // Hide the loading spinner
+    }
+  };
 
   const handleToggleExpand = () => {
     setIsExpanded(!isExpanded);
@@ -584,6 +627,42 @@ const Home = () => {
     setIsEditingOwnModel(false);
   };
 
+  const handleSummaryClick = () => {
+    const graph = graphRef.current.graph;
+    const savableData = convertGraphToSavableFormat(graph);
+
+    // Parse the adjacency matrix string back into an object
+    const matrix = JSON.parse(savableData.adjacency_matrix);
+
+    const targetFactor = savableData.target_factor;
+    const links = savableData.links;
+    const factors = Object.keys(matrix);
+
+    // Calculate top influencing factors on the target
+    let topFactors = [];
+    if (targetFactor && matrix[targetFactor]) {
+      topFactors = Object.entries(matrix)
+        .map(([fromFactor, toFactors]) => ({
+          name: fromFactor,
+          weight: toFactors[targetFactor] || 0,
+        }))
+        .filter((factor) => factor.weight !== 0) // Only show factors with a relationship
+        .sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight)) // Sort by absolute weight
+        .slice(0, 5); // Get the top 5
+    }
+
+    setSummaryData({
+      modelName: savableData.name,
+      adjacencyMatrix: matrix,
+      topFactors: topFactors,
+      numFactors: factors.length,
+      numLinks: links.length,
+      quality: modelQuality,
+      targetFactor: targetFactor,
+    });
+    setShowSummaryModal(true);
+  };
+
   const handleClear = () => {
     if (graphRef.current && graphRef.current.graph) {
       graphRef.current.graph.clear();
@@ -742,14 +821,44 @@ const Home = () => {
     popupState.close();
   };
 
+  // const onSearchInput = () => {
+  //   if (searchTerm.length > 0) {
+  //     setFilteredFactors(
+  //       [...adminFactors, ...userFactors].filter((factor) =>
+  //         factor.name.toLowerCase().includes(searchTerm.toLowerCase())
+  //       )
+  //     );
+  //   } else {
+  //     setFilteredFactors([]);
+  //   }
+  // };
   const onSearchInput = () => {
     if (searchTerm.length > 0) {
-      setFilteredFactors(
-        [...adminFactors, ...userFactors].filter((factor) =>
-          factor.name.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      );
+      const lowerCaseSearchTerm = searchTerm.toLowerCase();
+
+      // Combine your admin and user factors into a single array
+      const allFactors = [...adminFactors, ...userFactors];
+
+      const filteredFactors = allFactors.filter((factor) => {
+        // Get the aliases for the current factor from the mapping object
+        // Use the factor.name as the key to look up its aliases
+        const aliases = factorAliases[factor.name] || [];
+
+        // Combine the factor's name and its aliases for searching
+        const searchableStrings = [
+          factor.name.toLowerCase(),
+          ...aliases.map((a) => a.toLowerCase()),
+        ];
+
+        // Check if any of these searchable strings include the user's search term
+        return searchableStrings.some((searchableString) =>
+          searchableString.includes(lowerCaseSearchTerm)
+        );
+      });
+
+      setFilteredFactors(filteredFactors);
     } else {
+      // If the search term is empty, show all factors
       setFilteredFactors([]);
     }
   };
@@ -1270,32 +1379,57 @@ const Home = () => {
   const convertGraphToSavableFormat = (graph) => {
     const allCells = graph.getCells();
     const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
-
-    // Access the username from the retrieved object
     const userId = loggedUser ? loggedUser.id : null;
+
+    const factors = allCells
+      .filter((cell) => cell.isElement())
+      .map((cell) => cell.attributes.attrs.label.text);
+
+    // Initialize the adjacency matrix with zeros and factor names
+    const adjacencyMatrix = {};
+    factors.forEach((fromFactor) => {
+      adjacencyMatrix[fromFactor] = {};
+      factors.forEach((toFactor) => {
+        adjacencyMatrix[fromFactor][toFactor] = 0;
+      });
+    });
+
+    const links = [];
+    allCells.forEach((cell) => {
+      if (cell.isLink()) {
+        const startFactor = cell.getSourceCell().attributes.attrs.label.text;
+        const endFactor = cell.getTargetCell().attributes.attrs.label.text;
+        const weight = cell.attributes.weight || 1;
+        const trainable = cell.attributes.trainable || true;
+
+        // Populate the adjacency matrix
+        if (
+          adjacencyMatrix[startFactor] &&
+          adjacencyMatrix[startFactor][endFactor] !== undefined
+        ) {
+          adjacencyMatrix[startFactor][endFactor] = weight;
+        }
+
+        links.push({
+          start_factor: startFactor,
+          end_factor: endFactor,
+          weight: weight,
+          trainable: trainable,
+        });
+      }
+    });
 
     const coreData = {
       name: modelName,
       description: "A brief description of the model",
-      links: [],
+      links: links,
       target_factor: selectedTarget,
       creator: userId,
-      quality: modelQuality, // Include the training quality
+      quality: modelQuality,
       deleted: false,
       graphData: JSON.stringify(graph),
+      adjacency_matrix: JSON.stringify(adjacencyMatrix), // New field
     };
-
-    allCells.forEach((cell) => {
-      if (cell.isLink()) {
-        const linkData = {
-          start_factor: cell.getSourceCell().attributes.attrs.label.text,
-          end_factor: cell.getTargetCell().attributes.attrs.label.text,
-          weight: cell.attributes.weight || 1,
-          trainable: cell.attributes.trainable || true,
-        };
-        coreData.links.push(linkData);
-      }
-    });
 
     return coreData;
   };
@@ -2012,6 +2146,10 @@ const Home = () => {
                 alignItems: "center", // Center CustomButton vertically
               }}
             >
+              <CustomButton onClick={() => setShowLevelsModal(true)}>
+                Agg. Matrix
+              </CustomButton>
+              <CustomButton onClick={handleSummaryClick}>Summary</CustomButton>
               <DeleteButton onClick={() => handleClear()}>Clear</DeleteButton>
             </Box>
           </Box>
@@ -2177,6 +2315,22 @@ const Home = () => {
           onDuplicate={handleDuplicateGraph}
         />
         <LoadingSpinner isLoading={isLoading} />
+        <SummaryModal
+          open={showSummaryModal}
+          onClose={() => setShowSummaryModal(false)}
+          data={summaryData}
+        />
+        <LevelsModal
+          open={showLevelsModal}
+          onClose={() => setShowLevelsModal(false)}
+          userLevels={userLevels}
+          onLevelClick={handleLevelClick}
+        />
+        <AggMatrixModal
+          open={showAggMatrixModal}
+          onClose={() => setShowAggMatrixModal(false)}
+          data={aggMatrixData}
+        />
       </Grid>
     </Box>
   );
